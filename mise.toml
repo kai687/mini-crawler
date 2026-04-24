@@ -4,6 +4,7 @@ gofumpt = "latest"
 golangci-lint = "latest"
 golangci-lint-langserver = "latest"
 golines = "latest"
+gum = "latest"
 "go:github.com/incu6us/goimports-reviser/v3" = "latest"
 "go:golang.org/x/tools/gopls" = "latest"
 
@@ -25,3 +26,11 @@ run = "golangci-lint fmt"
 [tasks.test]
 description = "Run Go tests"
 run = "go test ./..."
+
+[tasks.indexing]
+description = "Index algolia docs"
+depends = "build"
+run = '''
+gum confirm "Run indexing now?" &&
+./docs-crawler -workers 16 -mode sitemap https://www.algolia.com/doc/sitemap.xml | algolia objects import docs_clean -F -
+'''
