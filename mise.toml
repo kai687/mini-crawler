@@ -1,0 +1,27 @@
+[tools]
+go = "latest"
+gofumpt = "latest"
+golangci-lint = "latest"
+golangci-lint-langserver = "latest"
+golines = "latest"
+"go:github.com/incu6us/goimports-reviser/v3" = "latest"
+"go:golang.org/x/tools/gopls" = "latest"
+
+[deps]
+go = { auto = true }
+
+[tasks.build]
+description = "Build the project"
+run = "go build"
+
+[tasks.lint]
+description = "Lint the code with golangci-lint"
+run = "golangci-lint run --fix"
+
+[tasks.format]
+description = "Format the code with golangci-lint"
+run = "golangci-lint fmt"
+
+[tasks.test]
+description = "Run Go tests"
+run = "go test ./..."

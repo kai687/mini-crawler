@@ -1,0 +1,23 @@
+version: "2"
+linters:
+  default: fast
+  enable:
+    - staticcheck
+    - wsl_v5
+  disable:
+    - depguard
+    - mnd
+    - prealloc
+    - testpackage
+    - wsl
+  exclusions:
+    warn-unused: true
+    rules:
+      - path: _test\.go
+        linters:
+          - funlen
+formatters:
+  enable:
+    - gofmt
+    - gofumpt
+    - golines
