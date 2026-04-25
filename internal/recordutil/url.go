@@ -164,10 +164,10 @@ func BreadcrumbHierarchyFromSegments(segments []string) *model.BreadcrumbHierarc
 	return h
 }
 
-// MethodNameFromURL returns camelCase method name for REST API doc URLs.
+// MethodNameFromURL returns camelCase method name for supported API/method doc URLs.
 func MethodNameFromURL(pageURL string) string {
 	path := strings.Trim(BreadcrumbPathFromURL(pageURL), "/")
-	if !strings.HasPrefix(path, "rest-api/") {
+	if !strings.HasPrefix(path, "rest-api/") && !strings.HasPrefix(path, "libraries/sdk/methods/") {
 		return ""
 	}
 

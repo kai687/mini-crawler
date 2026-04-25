@@ -159,8 +159,8 @@ Each JSON line is one `Record`.
 | `urlWithoutAnchor` | string | `url` with fragment removed. | Distinct key. Current settings use `attributeForDistinct="urlWithoutAnchor"`. |
 | `breadcrumbSegments` | `string[]` | Humanized URL path segments, excluding final path segment. | Display/context metadata. |
 | `breadcrumbHierarchy` | object | Cumulative hierarchy built from `breadcrumbSegments`. | Hierarchical metadata for UI/faceting if needed. |
-| `contentType` | string | Inferred from URL prefix: `/guides` -> `guide`, `/rest-api` -> `api`. | Current faceting/filter field. |
-| `methodName` | string | For `/doc/rest-api/...` URLs, camelCase from final path slug, for example `/search-single-index` -> `searchSingleIndex`. | Exact API method-name recall + boost field. |
+| `contentType` | string | Inferred from URL prefix: `/guides` -> `guide`, `/rest-api` -> `api`, `/libraries/sdk` -> `sdk`. | Current faceting/filter field. |
+| `methodName` | string | For `/doc/rest-api/...` and `/doc/libraries/sdk/methods/...` URLs, camelCase from final path slug, for example `/search-single-index` -> `searchSingleIndex`. | Exact API method-name recall + boost field. |
 | `recordType` | string | Derived from extracted unit kind and heading depth. | Tells what semantic unit record represents. |
 | `content` | string/null | Page description, body text, or synthesized field description depending on record type. | Main full-text body field. Also snippet source. |
 | `hierarchy` | object | Page title in `lvl1`, active heading stack in `lvl2`-`lvl6`. | Main title/heading search fields. |
@@ -231,6 +231,7 @@ High-level category inferred from URL path.
 Current values:
 - `guide` for paths starting with `/guides`
 - `api` for paths starting with `/rest-api`
+- `sdk` for paths starting with `/libraries/sdk`
 - omitted otherwise
 
 Important because current Algolia settings facet on `contentType`.

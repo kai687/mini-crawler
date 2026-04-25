@@ -306,6 +306,36 @@ func TestRecordEnricherAddsMethodNameForRESTAPIDocURLs(t *testing.T) {
 	})
 }
 
+func TestRecordEnricherAddsMethodNameForSDKMethodDocURLs(t *testing.T) {
+	doc := model.ExtractedDocument{
+		PageURL:     "https://www.algolia.com/doc/libraries/sdk/methods/search/list-api-keys",
+		Description: stringPtr("List API keys docs"),
+		PageHeading: stringPtr("List API keys"),
+	}
+
+	records, err := RecordEnricher{}.Enrich(doc)
+	if err != nil {
+		t.Fatalf("Enrich() err = %v", err)
+	}
+
+	if len(records) != 1 {
+		t.Fatalf("len(records) = %d, want 1", len(records))
+	}
+
+	assertRecord(t, records[0], recordExpectation{
+		url:         "https://www.algolia.com/doc/libraries/sdk/methods/search/list-api-keys",
+		contentType: "sdk",
+		typeName:    model.RecordTypeLvl1,
+		content:     "List API keys docs",
+		lvl1:        stringPtr("List API keys"),
+		methodName:  "listApiKeys",
+		position:    0,
+		objectID: recordutil.ObjectIDFromURL(
+			"https://www.algolia.com/doc/libraries/sdk/methods/search/list-api-keys",
+		),
+	})
+}
+
 type recordExpectation struct {
 	url         string
 	contentType string

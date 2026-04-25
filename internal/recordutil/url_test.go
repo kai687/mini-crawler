@@ -115,7 +115,18 @@ func TestMethodNameFromURLUsesSpecialCasing(t *testing.T) {
 	}
 }
 
-func TestMethodNameFromURLReturnsEmptyForNonRESTAPIURL(t *testing.T) {
+func TestMethodNameFromURLSupportsSDKMethodURLs(t *testing.T) {
+	got := MethodNameFromURL(
+		"https://www.algolia.com/doc/libraries/sdk/methods/search/list-api-keys",
+	)
+
+	want := "listApiKeys"
+	if got != want {
+		t.Fatalf("MethodNameFromURL() = %q, want %q", got, want)
+	}
+}
+
+func TestMethodNameFromURLReturnsEmptyForUnsupportedURL(t *testing.T) {
 	got := MethodNameFromURL("https://www.algolia.com/doc/guides/building-search/intro")
 	if got != "" {
 		t.Fatalf("MethodNameFromURL() = %q, want empty", got)
