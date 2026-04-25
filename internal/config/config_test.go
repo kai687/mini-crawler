@@ -6,17 +6,17 @@ import (
 	"testing"
 )
 
-func TestFromFlagsSingleModeDefault(t *testing.T) {
-	cfg, err := FromFlags([]string{"https://example.com/page"})
+func TestFromFlagsSitemapModeDefault(t *testing.T) {
+	cfg, err := FromFlags([]string{"https://example.com/sitemap.xml"})
 	if err != nil {
 		t.Fatalf("FromFlags() err = %v", err)
 	}
 
-	if cfg.Mode != ModeSingle {
-		t.Fatalf("Mode = %q, want %q", cfg.Mode, ModeSingle)
+	if cfg.Mode != ModeSitemap {
+		t.Fatalf("Mode = %q, want %q", cfg.Mode, ModeSitemap)
 	}
 
-	if cfg.Target != "https://example.com/page" {
+	if cfg.Target != "https://example.com/sitemap.xml" {
 		t.Fatalf("Target = %q", cfg.Target)
 	}
 }
@@ -45,13 +45,13 @@ func TestFromFlagsTooManyArgs(t *testing.T) {
 
 func TestFromFlagsMissingTarget(t *testing.T) {
 	_, err := FromFlags(nil)
-	if err == nil || err.Error() != "single mode need URL argument" {
-		t.Fatalf("err = %v, want missing single URL error", err)
+	if err == nil || err.Error() != "sitemap mode need sitemap URL argument" {
+		t.Fatalf("err = %v, want missing sitemap URL error", err)
 	}
 }
 
 func TestFromFlagsVerbose(t *testing.T) {
-	cfg, err := FromFlags([]string{"--verbose", "https://example.com/page"})
+	cfg, err := FromFlags([]string{"--mode", "single", "--verbose", "https://example.com/page"})
 	if err != nil {
 		t.Fatalf("FromFlags() err = %v", err)
 	}
@@ -62,7 +62,9 @@ func TestFromFlagsVerbose(t *testing.T) {
 }
 
 func TestFromFlagsWorkers(t *testing.T) {
-	cfg, err := FromFlags([]string{"--workers", "4", "https://example.com/page"})
+	cfg, err := FromFlags(
+		[]string{"--mode", "single", "--workers", "4", "https://example.com/page"},
+	)
 	if err != nil {
 		t.Fatalf("FromFlags() err = %v", err)
 	}
@@ -73,7 +75,9 @@ func TestFromFlagsWorkers(t *testing.T) {
 }
 
 func TestFromFlagsFailOnError(t *testing.T) {
-	cfg, err := FromFlags([]string{"--fail-on-error", "https://example.com/page"})
+	cfg, err := FromFlags(
+		[]string{"--mode", "single", "--fail-on-error", "https://example.com/page"},
+	)
 	if err != nil {
 		t.Fatalf("FromFlags() err = %v", err)
 	}

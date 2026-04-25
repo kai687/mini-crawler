@@ -7,11 +7,12 @@
 //	{
 //	  "url": "https://example.com/page",
 //	  "urlWithoutAnchor": "https://example.com/page",
-//	  "breadcrumb": "/guides/getting-started",
+//	  "breadcrumbSegments": ["Guides"],
+//	  "breadcrumbHierarchy": {
+//	    "lvl0": "Guides"
+//	  },
 //	  "contentType": "guide",
 //	  "recordType": "lvl1",
-//	  "title": "Page Title",
-//	  "description": "Page description",
 //	  "hierarchy": {
 //	    "lvl1": "Page Title"
 //	  },
@@ -24,11 +25,12 @@
 //	{
 //	  "url": "https://example.com/page#section",
 //	  "urlWithoutAnchor": "https://example.com/page",
-//	  "breadcrumb": "/guides/getting-started",
+//	  "breadcrumbSegments": ["Guides"],
+//	  "breadcrumbHierarchy": {
+//	    "lvl0": "Guides"
+//	  },
 //	  "contentType": "guide",
 //	  "recordType": "lvl2",
-//	  "title": "Page Title",
-//	  "description": "Page description",
 //	  "hierarchy": {
 //	    "lvl1": "Page Title",
 //	    "lvl2": "Section"
@@ -42,11 +44,12 @@
 //	{
 //	  "url": "https://example.com/page#section",
 //	  "urlWithoutAnchor": "https://example.com/page",
-//	  "breadcrumb": "/guides/getting-started",
+//	  "breadcrumbSegments": ["Guides"],
+//	  "breadcrumbHierarchy": {
+//	    "lvl0": "Guides"
+//	  },
 //	  "contentType": "guide",
 //	  "recordType": "content",
-//	  "title": "Page Title",
-//	  "description": "Page description",
 //	  "content": "Paragraph text",
 //	  "hierarchy": {
 //	    "lvl1": "Page Title",

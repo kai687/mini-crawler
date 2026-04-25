@@ -37,12 +37,24 @@ type Hierarchy struct {
 	Lvl6 *string `json:"lvl6,omitempty"`
 }
 
+// BreadcrumbHierarchy stores cumulative breadcrumb labels for hierarchical faceting.
+type BreadcrumbHierarchy struct {
+	Lvl0 *string `json:"lvl0,omitempty"`
+	Lvl1 *string `json:"lvl1,omitempty"`
+	Lvl2 *string `json:"lvl2,omitempty"`
+	Lvl3 *string `json:"lvl3,omitempty"`
+	Lvl4 *string `json:"lvl4,omitempty"`
+	Lvl5 *string `json:"lvl5,omitempty"`
+}
+
 // RecordType identifies valid extracted record kinds.
 type RecordType string
 
 const (
 	// RecordTypeContent stores paragraph or list item content.
 	RecordTypeContent RecordType = "content"
+	// RecordTypeField stores REST API parameter/request/response field records.
+	RecordTypeField RecordType = "field"
 	// RecordTypeLvl1 stores page-level record.
 	RecordTypeLvl1 RecordType = "lvl1"
 	// RecordTypeLvl2 stores h2 heading record.
@@ -63,16 +75,14 @@ type Record struct {
 	URL string `json:"url"`
 	// Page URL without any #anchor, useful for grouping/distinct in Algolia
 	URLWithoutAnchor string `json:"urlWithoutAnchor"`
-	// Breadcrumb path derived from URL path, with leading /doc removed
-	Breadcrumb string `json:"breadcrumb,omitempty"`
+	// Human-readable ancestor breadcrumb labels for display; current page label comes from title/heading
+	BreadcrumbSegments []string `json:"breadcrumbSegments,omitempty"`
+	// Hierarchical ancestor breadcrumb labels for Algolia faceting
+	BreadcrumbHierarchy *BreadcrumbHierarchy `json:"breadcrumbHierarchy,omitempty"`
 	// High-level content classification inferred from URL path (for example: guide, api)
 	ContentType string `json:"contentType,omitempty"`
-	// Record kind (content, lvl1, lvl2, ..., lvl6)
+	// Record kind (content, field, lvl1, lvl2, ..., lvl6)
 	RecordType RecordType `json:"recordType"`
-	// Page title (from head)
-	Title *string `json:"title,omitempty"`
-	// Page meta description
-	Description *string `json:"description,omitempty"`
 	// Paragraph or list item content
 	Content *string `json:"content,omitempty"`
 	// Heading context inherited by this record

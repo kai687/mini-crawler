@@ -34,7 +34,7 @@ func FromFlags(args []string) (Config, error) {
 
 	var cfg Config
 
-	fs.StringVar((*string)(&cfg.Mode), "mode", string(ModeSingle), "crawl mode: single or sitemap")
+	fs.StringVar((*string)(&cfg.Mode), "mode", string(ModeSitemap), "crawl mode: single or sitemap")
 	fs.BoolVar(&cfg.Verbose, "verbose", false, "show crawl logs")
 	fs.IntVar(&cfg.Workers, "workers", 1, "number of concurrent page workers")
 	fs.BoolVar(
@@ -48,8 +48,8 @@ func FromFlags(args []string) (Config, error) {
 	fs.StringVar(&cfg.Output, "output", "", "write records to file instead of stdout")
 	fs.Usage = func() {
 		fmt.Fprintln(fs.Output(), "Usage:")
-		fmt.Fprintln(fs.Output(), "  docs-crawler [--mode single] [flags] <url>")
-		fmt.Fprintln(fs.Output(), "  docs-crawler --mode sitemap [flags] <sitemap-url>")
+		fmt.Fprintln(fs.Output(), "  docs-crawler [flags] <sitemap-url>")
+		fmt.Fprintln(fs.Output(), "  docs-crawler --mode single [flags] <url>")
 		fmt.Fprintln(fs.Output())
 		fmt.Fprintln(fs.Output(), "Flags:")
 		fs.PrintDefaults()

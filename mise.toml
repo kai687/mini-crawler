@@ -8,6 +8,9 @@ gum = "latest"
 "go:github.com/incu6us/goimports-reviser/v3" = "latest"
 "go:golang.org/x/tools/gopls" = "latest"
 
+[tasks.all]
+depends = ["build", "format", "lint", "test"]
+
 [tasks.build]
 description = "Build the project"
 run = "go build"
@@ -29,7 +32,7 @@ description = "Index algolia docs"
 depends = "build"
 run = '''
 gum confirm "Run indexing now?" &&
-./docs-crawler -workers 16 -mode sitemap https://www.algolia.com/doc/sitemap.xml | algolia objects import docs_clean -F -
+./docs-crawler -workers 16 https://www.algolia.com/doc/sitemap.xml | algolia objects import docs_clean -F -
 '''
 
 [tasks.set-settings]

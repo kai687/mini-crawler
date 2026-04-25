@@ -38,29 +38,82 @@ func TestURLWithoutAnchor(t *testing.T) {
 	}
 }
 
-func TestBreadcrumbFromURLStripsAlgoliaDocPrefix(t *testing.T) {
-	got := BreadcrumbFromURL("https://www.algolia.com/doc/guides/building-search/intro#section")
+func TestBreadcrumbPathFromURLStripsAlgoliaDocPrefix(t *testing.T) {
+	got := BreadcrumbPathFromURL("https://www.algolia.com/doc/guides/building-search/intro#section")
 
 	want := "/guides/building-search/intro"
 	if got != want {
-		t.Fatalf("BreadcrumbFromURL() = %q, want %q", got, want)
+		t.Fatalf("BreadcrumbPathFromURL() = %q, want %q", got, want)
 	}
 }
 
-func TestBreadcrumbFromURLStripsAlgoliaDocPrefixWithoutWWW(t *testing.T) {
-	got := BreadcrumbFromURL("https://algolia.com/doc/rest-api/search/search-single-index")
+func TestBreadcrumbPathFromURLStripsAlgoliaDocPrefixWithoutWWW(t *testing.T) {
+	got := BreadcrumbPathFromURL("https://algolia.com/doc/rest-api/search/search-single-index")
 
 	want := "/rest-api/search/search-single-index"
 	if got != want {
-		t.Fatalf("BreadcrumbFromURL() = %q, want %q", got, want)
+		t.Fatalf("BreadcrumbPathFromURL() = %q, want %q", got, want)
 	}
 }
 
-func TestBreadcrumbFromURLKeepsNonDocPath(t *testing.T) {
-	got := BreadcrumbFromURL("https://example.com/page")
+func TestBreadcrumbSegmentsFromURL(t *testing.T) {
+	got := BreadcrumbSegmentsFromURL(
+		"https://www.algolia.com/doc/rest-api/search/search-single-index",
+	)
+	want := []string{"REST API", "Search"}
 
-	want := "/page"
-	if got != want {
-		t.Fatalf("BreadcrumbFromURL() = %q, want %q", got, want)
+	if len(got) != len(want) {
+		t.Fatalf("len(BreadcrumbSegmentsFromURL()) = %d, want %d", len(got), len(want))
+	}
+
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("BreadcrumbSegmentsFromURL()[%d] = %q, want %q", i, got[i], want[i])
+		}
+	}
+}
+
+func TestBreadcrumbSegmentsFromURLUsesSentenceCaseAndPreservesSpecialCasing(t *testing.T) {
+	got := BreadcrumbSegmentsFromURL(
+		"https://www.algolia.com/doc/ui-libraries/what-is-autocomplete",
+	)
+	want := []string{"UI libraries"}
+
+	if len(got) != len(want) {
+		t.Fatalf("len(BreadcrumbSegmentsFromURL()) = %d, want %d", len(got), len(want))
+	}
+
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("BreadcrumbSegmentsFromURL()[%d] = %q, want %q", i, got[i], want[i])
+		}
+	}
+}
+
+func TestBreadcrumbSegmentsFromURLReturnsNilForSingleSegmentPath(t *testing.T) {
+	got := BreadcrumbSegmentsFromURL("https://www.algolia.com/doc/guides")
+	if got != nil {
+		t.Fatalf("BreadcrumbSegmentsFromURL() = %v, want nil", got)
+	}
+}
+
+func TestBreadcrumbHierarchyFromSegments(t *testing.T) {
+	got := BreadcrumbHierarchyFromSegments([]string{"Guides", "Building search", "Intro"})
+	if got == nil {
+		t.Fatal("BreadcrumbHierarchyFromSegments() = nil")
+	}
+
+	assertStringPtr(t, "Lvl0", got.Lvl0, testStringPtr("Guides"))
+	assertStringPtr(t, "Lvl1", got.Lvl1, testStringPtr("Guides > Building search"))
+	assertStringPtr(t, "Lvl2", got.Lvl2, testStringPtr("Guides > Building search > Intro"))
+}
+
+func testStringPtr(value string) *string { return &value }
+
+func assertStringPtr(t *testing.T, name string, got *string, want *string) {
+	t.Helper()
+
+	if got == nil || want == nil || *got != *want {
+		t.Fatalf("%s = %v, want %v", name, got, want)
 	}
 }

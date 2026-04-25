@@ -12,6 +12,7 @@ import (
 
 	"github.com/algolia/docs-crawler/internal/config"
 	"github.com/algolia/docs-crawler/internal/coverage"
+	"github.com/algolia/docs-crawler/internal/enrich"
 	"github.com/algolia/docs-crawler/internal/extract"
 	"github.com/algolia/docs-crawler/internal/fetch"
 	"github.com/algolia/docs-crawler/internal/model"
@@ -205,6 +206,7 @@ func processPage(
 	fetcher := fetch.HTTPFetcher{Client: httpClient}
 	parser := parse.HTMLParser{}
 	extractor := extract.PageExtractor{}
+	enricher := enrich.RecordEnricher{}
 
 	page, err := fetcher.Fetch(ctx, pageURL)
 	if err != nil {
@@ -218,9 +220,14 @@ func processPage(
 
 	expectedHeadings := extract.CountExpectedHeadings(parsed.Doc)
 
-	records, err := extractor.Extract(parsed)
+	extracted, err := extractor.Extract(parsed)
 	if err != nil {
 		return nil, 0, 0, fmt.Errorf("extract %s: %w", pageURL, err)
+	}
+
+	records, err := enricher.Enrich(extracted)
+	if err != nil {
+		return nil, 0, 0, fmt.Errorf("enrich %s: %w", pageURL, err)
 	}
 
 	return records, expectedHeadings, countHeadingRecords(records), nil
@@ -233,6 +240,7 @@ func countHeadingRecords(records []model.Record) int {
 		switch record.RecordType {
 		case model.RecordTypeLvl2,
 			model.RecordTypeLvl3,
+			model.RecordTypeField,
 			model.RecordTypeLvl4,
 			model.RecordTypeLvl5,
 			model.RecordTypeLvl6:
