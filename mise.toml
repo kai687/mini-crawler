@@ -40,7 +40,7 @@ description = "Configure docs index"
 depends = "build"
 run = '''
 algolia settings set docs_clean \
-  --searchableAttributes "unordered(hierarchy.lvl0),unordered(hierarchy.lvl1),unordered(hierarchy.lvl2),unordered(hierarchy.lvl3),unordered(hierarchy.lvl4),unordered(hierarchy.lvl5),unordered(hierarchy.lvl6),unordered(content)" \
+  --searchableAttributes "unordered(methodName),unordered(hierarchy.lvl0),unordered(hierarchy.lvl1),unordered(hierarchy.lvl2),unordered(hierarchy.lvl3),unordered(hierarchy.lvl4),unordered(hierarchy.lvl5),unordered(hierarchy.lvl6),unordered(content)" \
   --attributesForFaceting "contentType" \
   --customRanking "asc(position)" \
   --ranking "attribute,typo,words,filters,proximity,exact,custom" \

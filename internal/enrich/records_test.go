@@ -276,11 +276,42 @@ func TestRecordEnricherIndexesAPIFieldRecords(t *testing.T) {
 	})
 }
 
+func TestRecordEnricherAddsMethodNameForRESTAPIDocURLs(t *testing.T) {
+	doc := model.ExtractedDocument{
+		PageURL:     "https://www.algolia.com/doc/rest-api/search/search-single-index",
+		Description: stringPtr("Search endpoint docs"),
+		PageHeading: stringPtr("Search an index"),
+	}
+
+	records, err := RecordEnricher{}.Enrich(doc)
+	if err != nil {
+		t.Fatalf("Enrich() err = %v", err)
+	}
+
+	if len(records) != 1 {
+		t.Fatalf("len(records) = %d, want 1", len(records))
+	}
+
+	assertRecord(t, records[0], recordExpectation{
+		url:         "https://www.algolia.com/doc/rest-api/search/search-single-index",
+		contentType: "api",
+		typeName:    model.RecordTypeLvl1,
+		content:     "Search endpoint docs",
+		lvl1:        stringPtr("Search an index"),
+		methodName:  "searchSingleIndex",
+		position:    0,
+		objectID: recordutil.ObjectIDFromURL(
+			"https://www.algolia.com/doc/rest-api/search/search-single-index",
+		),
+	})
+}
+
 type recordExpectation struct {
 	url         string
 	contentType string
 	typeName    model.RecordType
 	content     string
+	methodName  string
 	lvl1        *string
 	lvl2        *string
 	lvl3        *string
@@ -300,6 +331,7 @@ func assertRecord(t *testing.T, record model.Record, want recordExpectation) {
 	}
 
 	assertStringPtr(t, "Content", record.Content, stringPtr(want.content))
+	assertEqual(t, "MethodName", record.MethodName, want.methodName)
 	assertStringPtr(t, "Hierarchy.Lvl1", record.Hierarchy.Lvl1, want.lvl1)
 	assertStringPtr(t, "Hierarchy.Lvl2", record.Hierarchy.Lvl2, want.lvl2)
 	assertStringPtr(t, "Hierarchy.Lvl3", record.Hierarchy.Lvl3, want.lvl3)

@@ -81,6 +81,8 @@ type Record struct {
 	BreadcrumbHierarchy *BreadcrumbHierarchy `json:"breadcrumbHierarchy,omitempty"`
 	// High-level content classification inferred from URL path (for example: guide, api)
 	ContentType string `json:"contentType,omitempty"`
+	// Canonical API method name derived from final REST API URL slug, for example searchSingleIndex
+	MethodName string `json:"methodName,omitempty"`
 	// Record kind (content, field, lvl1, lvl2, ..., lvl6)
 	RecordType RecordType `json:"recordType"`
 	// Paragraph or list item content

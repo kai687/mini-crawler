@@ -160,6 +160,7 @@ Each JSON line is one `Record`.
 | `breadcrumbSegments` | `string[]` | Humanized URL path segments, excluding final path segment. | Display/context metadata. |
 | `breadcrumbHierarchy` | object | Cumulative hierarchy built from `breadcrumbSegments`. | Hierarchical metadata for UI/faceting if needed. |
 | `contentType` | string | Inferred from URL prefix: `/guides` -> `guide`, `/rest-api` -> `api`. | Current faceting/filter field. |
+| `methodName` | string | For `/doc/rest-api/...` URLs, camelCase from final path slug, for example `/search-single-index` -> `searchSingleIndex`. | Exact API method-name recall + boost field. |
 | `recordType` | string | Derived from extracted unit kind and heading depth. | Tells what semantic unit record represents. |
 | `content` | string/null | Page description, body text, or synthesized field description depending on record type. | Main full-text body field. Also snippet source. |
 | `hierarchy` | object | Page title in `lvl1`, active heading stack in `lvl2`-`lvl6`. | Main title/heading search fields. |
@@ -329,6 +330,7 @@ Current `docs_clean` settings:
   "distinct": true,
   "ranking": ["attribute", "typo", "words", "filters", "proximity", "exact", "custom"],
   "searchableAttributes": [
+    "unordered(methodName)",
     "unordered(hierarchy.lvl0)",
     "unordered(hierarchy.lvl1)",
     "unordered(hierarchy.lvl2)",
@@ -350,6 +352,7 @@ Practical effect:
    - content records
 
 2. Algolia first prefers matches in earlier searchable attributes
+   - `methodName` beats title/heading/body when query matches canonical API method name
    - title/heading match beats body-content match
    - shallower hierarchy field can beat deeper/body fields when rest is equal
 

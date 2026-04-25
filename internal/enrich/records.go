@@ -24,6 +24,7 @@ func (e RecordEnricher) Enrich(doc model.ExtractedDocument) ([]model.Record, err
 		BreadcrumbSegments:  breadcrumbSegments,
 		BreadcrumbHierarchy: breadcrumbHierarchy,
 		ContentType:         contentType,
+		MethodName:          recordutil.MethodNameFromURL(pageURL),
 		RecordType:          model.RecordTypeLvl1,
 		Content:             cloneStringPtr(doc.Description),
 		Hierarchy: model.Hierarchy{

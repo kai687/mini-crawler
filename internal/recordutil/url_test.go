@@ -97,6 +97,31 @@ func TestBreadcrumbSegmentsFromURLReturnsNilForSingleSegmentPath(t *testing.T) {
 	}
 }
 
+func TestMethodNameFromURL(t *testing.T) {
+	got := MethodNameFromURL("https://www.algolia.com/doc/rest-api/search/search-single-index")
+
+	want := "searchSingleIndex"
+	if got != want {
+		t.Fatalf("MethodNameFromURL() = %q, want %q", got, want)
+	}
+}
+
+func TestMethodNameFromURLUsesSpecialCasing(t *testing.T) {
+	got := MethodNameFromURL("https://www.algolia.com/doc/rest-api/search/get-ab-test")
+
+	want := "getABTest"
+	if got != want {
+		t.Fatalf("MethodNameFromURL() = %q, want %q", got, want)
+	}
+}
+
+func TestMethodNameFromURLReturnsEmptyForNonRESTAPIURL(t *testing.T) {
+	got := MethodNameFromURL("https://www.algolia.com/doc/guides/building-search/intro")
+	if got != "" {
+		t.Fatalf("MethodNameFromURL() = %q, want empty", got)
+	}
+}
+
 func TestBreadcrumbHierarchyFromSegments(t *testing.T) {
 	got := BreadcrumbHierarchyFromSegments([]string{"Guides", "Building search", "Intro"})
 	if got == nil {

@@ -21,6 +21,7 @@ func TestJSONLWriterWrite(t *testing.T) {
 			Lvl1: stringPtr("Guides > Getting Started"),
 		},
 		ContentType: "guide",
+		MethodName:  "searchSingleIndex",
 		RecordType:  "content",
 		Content:     stringPtr("Paragraph content"),
 		Hierarchy: model.Hierarchy{
@@ -45,6 +46,7 @@ func TestJSONLWriterWrite(t *testing.T) {
 		"\"breadcrumbSegments\":[\"Guides\",\"Getting Started\"]," +
 		"\"breadcrumbHierarchy\":{\"lvl0\":\"Guides\",\"lvl1\":\"Guides \\u003e Getting Started\"}," +
 		"\"contentType\":\"guide\"," +
+		"\"methodName\":\"searchSingleIndex\"," +
 		"\"recordType\":\"content\"," +
 		"\"content\":\"Paragraph content\"," +
 		"\"hierarchy\":{" +

@@ -57,6 +57,10 @@ var breadcrumbTokenCasing = map[string]string{
 	"xml":          "XML",
 }
 
+var methodNameTokenCasing = map[string]string{
+	"ab": "AB",
+}
+
 // URLWithAnchor returns pageURL with a fragment anchor when anchor is non-empty.
 func URLWithAnchor(pageURL string, anchor string) string {
 	if anchor == "" {
@@ -158,6 +162,52 @@ func BreadcrumbHierarchyFromSegments(segments []string) *model.BreadcrumbHierarc
 	}
 
 	return h
+}
+
+// MethodNameFromURL returns camelCase method name for REST API doc URLs.
+func MethodNameFromURL(pageURL string) string {
+	path := strings.Trim(BreadcrumbPathFromURL(pageURL), "/")
+	if !strings.HasPrefix(path, "rest-api/") {
+		return ""
+	}
+
+	parts := strings.Split(path, "/")
+	if len(parts) == 0 {
+		return ""
+	}
+
+	last := parts[len(parts)-1]
+	if last == "" {
+		return ""
+	}
+
+	tokens := strings.Fields(strings.ReplaceAll(last, "-", " "))
+	if len(tokens) == 0 {
+		return ""
+	}
+
+	for i, token := range tokens {
+		normalized := strings.ToLower(token)
+		if casing, ok := methodNameTokenCasing[normalized]; ok {
+			if i == 0 {
+				tokens[i] = strings.ToLower(casing)
+			} else {
+				tokens[i] = casing
+			}
+
+			continue
+		}
+
+		if i == 0 {
+			tokens[i] = normalized
+
+			continue
+		}
+
+		tokens[i] = sentenceCaseFirstWord(normalized)
+	}
+
+	return strings.Join(tokens, "")
 }
 
 func humanizeSlug(value string) string {
