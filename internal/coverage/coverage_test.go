@@ -17,15 +17,19 @@ func TestTrackerEmpty(t *testing.T) {
 	if report.AvgRecordsPerURL != 0 {
 		t.Fatalf("AvgRecordsPerURL = %v, want 0", report.AvgRecordsPerURL)
 	}
+
+	if report.HeadingCoverage != 1 {
+		t.Fatalf("HeadingCoverage = %v, want 1 (no expected headings)", report.HeadingCoverage)
+	}
 }
 
 func TestTrackerCountsURLsAndRecords(t *testing.T) {
 	var tracker Tracker
 
-	tracker.Add(3)
-	tracker.Add(0)
-	tracker.Add(5)
-	tracker.Add(2)
+	tracker.Add(3, 4, 3)
+	tracker.Add(0, 0, 0)
+	tracker.Add(5, 2, 2)
+	tracker.Add(2, 4, 3)
 
 	report := tracker.Report()
 	if report.TotalURLs != 4 {
@@ -47,19 +51,35 @@ func TestTrackerCountsURLsAndRecords(t *testing.T) {
 	if report.AvgRecordsPerURL != 2.5 {
 		t.Fatalf("AvgRecordsPerURL = %v, want 2.5", report.AvgRecordsPerURL)
 	}
+
+	if report.ExpectedHeadings != 10 {
+		t.Fatalf("ExpectedHeadings = %d, want 10", report.ExpectedHeadings)
+	}
+
+	if report.ExtractedHeadings != 8 {
+		t.Fatalf("ExtractedHeadings = %d, want 8", report.ExtractedHeadings)
+	}
+
+	if report.HeadingCoverage != 0.8 {
+		t.Fatalf("HeadingCoverage = %v, want 0.8", report.HeadingCoverage)
+	}
 }
 
 func TestReportFormat(t *testing.T) {
 	report := Report{
-		TotalURLs:        4,
-		URLsWithRecords:  3,
-		TotalRecords:     10,
-		Coverage:         0.75,
-		AvgRecordsPerURL: 2.5,
+		TotalURLs:         4,
+		URLsWithRecords:   3,
+		TotalRecords:      10,
+		Coverage:          0.75,
+		AvgRecordsPerURL:  2.5,
+		ExpectedHeadings:  10,
+		ExtractedHeadings: 8,
+		HeadingCoverage:   0.8,
 	}
 
 	got := report.Format()
-	want := "coverage: 3/4 URLs returned records (75.00%); average 2.50 records/URL"
+	want := "coverage: 3/4 URLs returned records (75.00%); 10 records total; " +
+		"average 2.50 records/URL; headings 8/10 (80.00%)"
 
 	if got != want {
 		t.Fatalf("Format() = %q, want %q", got, want)

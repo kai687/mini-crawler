@@ -21,9 +21,11 @@ import (
 )
 
 type pageResult struct {
-	url     string
-	records []model.Record
-	err     error
+	url               string
+	records           []model.Record
+	expectedHeadings  int
+	extractedHeadings int
+	err               error
 }
 
 type runState struct {
@@ -122,8 +124,14 @@ func startWorkers(
 			defer wg.Done()
 
 			for pageURL := range jobs {
-				records, err := processPage(ctx, httpClient, pageURL)
-				results <- pageResult{url: pageURL, records: records, err: err}
+				records, expected, extracted, err := processPage(ctx, httpClient, pageURL)
+				results <- pageResult{
+					url:               pageURL,
+					records:           records,
+					expectedHeadings:  expected,
+					extractedHeadings: extracted,
+					err:               err,
+				}
 			}
 		}()
 	}
@@ -157,7 +165,7 @@ func handlePageResult(
 ) error {
 	if result.err != nil {
 		state.failed++
-		state.tracker.Add(0)
+		state.tracker.Add(0, 0, 0)
 
 		slog.Error("page failed", "url", result.url, "err", result.err)
 
@@ -170,7 +178,7 @@ func handlePageResult(
 		return nil
 	}
 
-	state.tracker.Add(len(result.records))
+	state.tracker.Add(len(result.records), result.expectedHeadings, result.extractedHeadings)
 
 	if state.firstErr != nil {
 		return nil
@@ -191,7 +199,7 @@ func processPage(
 	ctx context.Context,
 	httpClient *http.Client,
 	pageURL string,
-) ([]model.Record, error) {
+) ([]model.Record, int, int, error) {
 	slog.Info("processing", "url", pageURL)
 
 	fetcher := fetch.HTTPFetcher{Client: httpClient}
@@ -200,20 +208,39 @@ func processPage(
 
 	page, err := fetcher.Fetch(ctx, pageURL)
 	if err != nil {
-		return nil, fmt.Errorf("fetch %s: %w", pageURL, err)
+		return nil, 0, 0, fmt.Errorf("fetch %s: %w", pageURL, err)
 	}
 
 	parsed, err := parser.Parse(page)
 	if err != nil {
-		return nil, fmt.Errorf("parse %s: %w", pageURL, err)
+		return nil, 0, 0, fmt.Errorf("parse %s: %w", pageURL, err)
 	}
+
+	expectedHeadings := extract.CountExpectedHeadings(parsed.Doc)
 
 	records, err := extractor.Extract(parsed)
 	if err != nil {
-		return nil, fmt.Errorf("extract %s: %w", pageURL, err)
+		return nil, 0, 0, fmt.Errorf("extract %s: %w", pageURL, err)
 	}
 
-	return records, nil
+	return records, expectedHeadings, countHeadingRecords(records), nil
+}
+
+func countHeadingRecords(records []model.Record) int {
+	count := 0
+
+	for _, record := range records {
+		switch record.Type {
+		case model.RecordTypeLvl2,
+			model.RecordTypeLvl3,
+			model.RecordTypeLvl4,
+			model.RecordTypeLvl5,
+			model.RecordTypeLvl6:
+			count++
+		}
+	}
+
+	return count
 }
 
 func newSource(cfg config.Config, client *http.Client) (source.Source, error) {

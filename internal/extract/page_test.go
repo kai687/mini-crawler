@@ -262,6 +262,31 @@ func TestPageExtractorListItemIndexedAsContent(t *testing.T) {
 	})
 }
 
+func TestPageExtractorListItemWithParagraphIndexedOnce(t *testing.T) {
+	doc := mustDocument(
+		t,
+		`<html><body><h1 id="page-title"> Page Title </h1><div id="content">`+
+			`<h2 id="section">Section</h2>`+
+			`<ul><li><span data-as="p">Bullet text</span></li></ul>`+
+			`</div></body></html>`,
+	)
+
+	records, err := PageExtractor{}.Extract(
+		model.ParsedPage{URL: "https://example.com/page", Doc: doc},
+	)
+	if err != nil {
+		t.Fatalf("Extract() err = %v", err)
+	}
+
+	if len(records) != 3 {
+		t.Fatalf("len(records) = %d, want 3", len(records))
+	}
+
+	if records[2].Content == nil || *records[2].Content != "Bullet text" {
+		t.Fatalf("records[2].Content = %v, want %q", records[2].Content, "Bullet text")
+	}
+}
+
 func TestPageExtractorSkipsLinkOnlyListItem(t *testing.T) {
 	doc := mustDocument(
 		t,
@@ -314,6 +339,69 @@ func TestPageExtractorKeepsListItemWithNonLinkText(t *testing.T) {
 		position: 2,
 		objectID: recordutil.ObjectIDWithPosition(recordutil.ObjectIDFromURL(sectionURL), 2),
 	})
+}
+
+func TestPageExtractorIndexesAPIParameterField(t *testing.T) {
+	doc := mustDocument(
+		t,
+		`<html><body><h1 id="page-title">Search single index</h1><div id="content">`+
+			`<h2 id="path-parameters">Path parameters</h2>`+
+			`<div class="primitive-param-field"><div class="py-6">`+
+			`<div class="flex font-mono" id="parameter-index-name">`+
+			`<div><div><a href="#parameter-index-name">link</a></div></div>`+
+			`<div data-component-part="field-name">indexName</div>`+
+			`<div data-component-part="field-meta">`+
+			`<div data-component-part="field-info-pill"><span>string</span></div>`+
+			`<div data-component-part="field-required-pill">required</div>`+
+			`</div>`+
+			`</div>`+
+			`<div class="mt-4">`+
+			`<div class="prose"><p class="whitespace-pre-line">Name of the index.</p></div>`+
+			`<div class="flex">Example: <code>"X"</code></div>`+
+			`</div>`+
+			`</div></div>`+
+			`</div></body></html>`,
+	)
+
+	records, err := PageExtractor{}.Extract(model.ParsedPage{
+		URL: "https://example.com/page",
+		Doc: doc,
+	})
+	if err != nil {
+		t.Fatalf("Extract() err = %v", err)
+	}
+
+	if len(records) != 4 {
+		t.Fatalf("len(records) = %d, want 4", len(records))
+	}
+
+	pathSectionURL := recordutil.URLWithAnchor("https://example.com/page", "path-parameters")
+	indexNameURL := recordutil.URLWithAnchor("https://example.com/page", "parameter-index-name")
+
+	assertRecord(t, records[2], recordExpectation{
+		url:      indexNameURL,
+		typeName: "lvl3",
+		title:    stringPtr("Search single index"),
+		lvl1:     stringPtr("Search single index"),
+		lvl2:     stringPtr("Path parameters"),
+		lvl3:     stringPtr("indexName"),
+		position: 2,
+		objectID: recordutil.ObjectIDFromURL(indexNameURL),
+	})
+
+	assertRecord(t, records[3], recordExpectation{
+		url:      indexNameURL,
+		typeName: "content",
+		title:    stringPtr("Search single index"),
+		content:  "string. required. Name of the index.",
+		lvl1:     stringPtr("Search single index"),
+		lvl2:     stringPtr("Path parameters"),
+		lvl3:     stringPtr("indexName"),
+		position: 3,
+		objectID: recordutil.ObjectIDWithPosition(recordutil.ObjectIDFromURL(indexNameURL), 3),
+	})
+
+	_ = pathSectionURL
 }
 
 func TestShouldIndexListItem(t *testing.T) {

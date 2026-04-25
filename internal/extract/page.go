@@ -11,8 +11,41 @@ import (
 // PageExtractor turns one parsed HTML page into page, heading, paragraph, and list item records.
 type PageExtractor struct{}
 
-const contentSelector = "#content h2[id], #content h3[id], #content h4[id], " +
-	"#content h5[id], #content h6[id], #content span[data-as='p'], #content li"
+// contentRootSelectors lists candidate content containers, in priority order.
+var contentRootSelectors = []string{"#content", "#content-area"}
+
+// headingSelectorRelative matches in-content headings (with id) relative to a content root.
+const headingSelectorRelative = "h2[id], h3[id], h4[id], h5[id], h6[id]"
+
+// paramFieldSelector matches API reference parameter fields (e.g. indexName).
+// Header div carries an `id="parameter-..."` anchor; descendants expose
+// `data-component-part="field-name"` and a sibling `div.mt-4` with the description.
+const paramFieldSelector = `div[id^='parameter-']`
+
+const contentSelectorRelative = headingSelectorRelative + ", span[data-as='p'], li, " + paramFieldSelector
+
+// ContentRoot returns the first matching content container in priority order, or nil.
+func ContentRoot(doc *goquery.Document) *goquery.Selection {
+	for _, selector := range contentRootSelectors {
+		root := doc.Find(selector).First()
+		if root.Length() > 0 {
+			return root
+		}
+	}
+
+	return nil
+}
+
+// CountExpectedHeadings reports how many in-content headings the doc contains.
+func CountExpectedHeadings(doc *goquery.Document) int {
+	root := ContentRoot(doc)
+	if root == nil {
+		return 0
+	}
+
+	return root.Find(headingSelectorRelative).Length() +
+		root.Find(paramFieldSelector).Length()
+}
 
 // Extract builds records for page metadata, headings, paragraphs, and list items in document order.
 func (e PageExtractor) Extract(page model.ParsedPage) ([]model.Record, error) {
@@ -55,8 +88,13 @@ func contentRecords(page model.ParsedPage, pageRecord model.Record) []model.Reco
 	currentURL := page.URL
 	position := 1
 
-	page.Doc.Find(contentSelector).Each(func(_ int, selection *goquery.Selection) {
-		record, ok, nextHierarchy, nextURL := recordFromSelection(
+	root := ContentRoot(page.Doc)
+	if root == nil {
+		return records
+	}
+
+	root.Find(contentSelectorRelative).Each(func(_ int, selection *goquery.Selection) {
+		emitted, nextHierarchy, nextURL := recordFromSelection(
 			page,
 			pageRecord,
 			selection,
@@ -64,14 +102,11 @@ func contentRecords(page model.ParsedPage, pageRecord model.Record) []model.Reco
 			currentURL,
 			position,
 		)
-		if !ok {
-			return
-		}
 
-		records = append(records, record)
+		records = append(records, emitted...)
+		position += len(emitted)
 		currentHierarchy = nextHierarchy
 		currentURL = nextURL
-		position++
 	})
 
 	return records
@@ -84,7 +119,7 @@ func recordFromSelection(
 	currentHierarchy model.Hierarchy,
 	currentURL string,
 	position int,
-) (model.Record, bool, model.Hierarchy, string) {
+) ([]model.Record, model.Hierarchy, string) {
 	switch goquery.NodeName(selection) {
 	case "h2", "h3", "h4", "h5", "h6":
 		record, ok := headingRecordFromSelection(
@@ -95,29 +130,124 @@ func recordFromSelection(
 			position,
 		)
 		if !ok {
-			return model.Record{}, false, currentHierarchy, currentURL
+			return nil, currentHierarchy, currentURL
 		}
 
-		return record, true, cloneHierarchy(record.Hierarchy), record.URL
+		return []model.Record{record}, cloneHierarchy(record.Hierarchy), record.URL
 	case "span":
-		return contentRecordFromSelection(
+		record, ok, nextHierarchy, nextURL := contentRecordFromSelection(
 			pageRecord,
 			currentHierarchy,
 			currentURL,
 			selection,
 			position,
 		)
+		if !ok {
+			return nil, nextHierarchy, nextURL
+		}
+
+		return []model.Record{record}, nextHierarchy, nextURL
 	case "li":
-		return listItemRecordFromSelection(
+		record, ok, nextHierarchy, nextURL := listItemRecordFromSelection(
 			pageRecord,
 			currentHierarchy,
 			currentURL,
 			selection,
+			position,
+		)
+		if !ok {
+			return nil, nextHierarchy, nextURL
+		}
+
+		return []model.Record{record}, nextHierarchy, nextURL
+	case "div":
+		return paramFieldRecordsFromSelection(
+			page,
+			pageRecord,
+			selection,
+			currentHierarchy,
+			currentURL,
 			position,
 		)
 	default:
-		return model.Record{}, false, currentHierarchy, currentURL
+		return nil, currentHierarchy, currentURL
 	}
+}
+
+// paramFieldRecordsFromSelection emits a heading record for an API parameter
+// field plus an optional content record for its description block.
+func paramFieldRecordsFromSelection(
+	page model.ParsedPage,
+	pageRecord model.Record,
+	selection *goquery.Selection,
+	currentHierarchy model.Hierarchy,
+	currentURL string,
+	position int,
+) ([]model.Record, model.Hierarchy, string) {
+	anchor := normalizeWhitespace(selection.AttrOr("id", ""))
+	if anchor == "" {
+		return nil, currentHierarchy, currentURL
+	}
+
+	name := normalizeWhitespace(
+		selection.Find("[data-component-part='field-name']").First().Text(),
+	)
+	if name == "" {
+		return nil, currentHierarchy, currentURL
+	}
+
+	const fieldLevel = 3
+
+	heading := pageRecord
+	heading.Type = typeFromLevel(fieldLevel)
+	heading.Hierarchy = cloneHierarchy(currentHierarchy)
+	setHierarchyLevel(&heading.Hierarchy, fieldLevel, stringPtr(name))
+	clearHierarchyBelow(&heading.Hierarchy, fieldLevel)
+	heading.Position = position
+	heading.URL = recordutil.URLWithAnchor(page.URL, anchor)
+	heading.ObjectID = recordutil.ObjectIDFromURL(heading.URL)
+
+	records := []model.Record{heading}
+
+	if desc := paramFieldDescription(selection); desc != "" {
+		records = append(records, contentRecord(
+			pageRecord,
+			heading.Hierarchy,
+			heading.URL,
+			desc,
+			position+1,
+		))
+	}
+
+	return records, cloneHierarchy(heading.Hierarchy), heading.URL
+}
+
+// paramFieldDescription concatenates the type pill, required marker, and the
+// first paragraph of the description sibling block.
+func paramFieldDescription(header *goquery.Selection) string {
+	var parts []string
+
+	if pill := normalizeWhitespace(
+		header.Find("[data-component-part='field-info-pill']").First().Text(),
+	); pill != "" {
+		parts = append(parts, pill)
+	}
+
+	if normalizeWhitespace(
+		header.Find("[data-component-part='field-required-pill']").First().Text(),
+	) != "" {
+		parts = append(parts, "required")
+	}
+
+	descBlock := header.NextFiltered("div.mt-4").First()
+	if descBlock.Length() > 0 {
+		prose := descBlock.ChildrenFiltered("div").First()
+		if text := normalizeWhitespace(prose.ChildrenFiltered("p").First().Text()); text != "" {
+			parts = append(parts, text)
+		}
+	}
+
+	return strings.Join(parts, ". ")
 }
 
 func headingRecordFromSelection(
@@ -149,6 +279,10 @@ func contentRecordFromSelection(
 	selection *goquery.Selection,
 	position int,
 ) (model.Record, bool, model.Hierarchy, string) {
+	if selection.ParentsFiltered("li").Length() > 0 {
+		return model.Record{}, false, currentHierarchy, currentURL
+	}
+
 	text := normalizeWhitespace(selection.Text())
 	if text == "" {
 		return model.Record{}, false, currentHierarchy, currentURL
