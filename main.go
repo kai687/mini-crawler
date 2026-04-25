@@ -26,10 +26,30 @@ func main() {
 
 	configureLogger(cfg.Verbose)
 
-	if err := app.Run(context.Background(), cfg, os.Stdout); err != nil {
+	out, closeOut, err := openOutput(cfg.Output)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "open output: %v\n", err)
+		os.Exit(1)
+	}
+	defer closeOut()
+
+	if err := app.Run(context.Background(), cfg, out); err != nil {
 		fmt.Fprintf(os.Stderr, "crawl failed: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+func openOutput(path string) (io.Writer, func(), error) {
+	if path == "" {
+		return os.Stdout, func() {}, nil
+	}
+
+	file, err := os.Create(path)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return file, func() { _ = file.Close() }, nil
 }
 
 func configureLogger(verbose bool) {

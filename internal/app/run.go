@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/algolia/docs-crawler/internal/config"
+	"github.com/algolia/docs-crawler/internal/coverage"
 	"github.com/algolia/docs-crawler/internal/extract"
 	"github.com/algolia/docs-crawler/internal/fetch"
 	"github.com/algolia/docs-crawler/internal/model"
@@ -28,6 +29,7 @@ type pageResult struct {
 type runState struct {
 	firstErr error
 	failed   int
+	tracker  coverage.Tracker
 }
 
 // Run executes one crawler session and writes extracted records to out.
@@ -98,6 +100,10 @@ func runPages(
 		fmt.Fprintf(os.Stderr, "crawl completed with %d failed URL(s)\n", state.failed)
 	}
 
+	if cfg.Coverage {
+		fmt.Fprintln(os.Stderr, state.tracker.Report().Format())
+	}
+
 	return nil
 }
 
@@ -151,6 +157,7 @@ func handlePageResult(
 ) error {
 	if result.err != nil {
 		state.failed++
+		state.tracker.Add(0)
 
 		slog.Error("page failed", "url", result.url, "err", result.err)
 
@@ -162,6 +169,8 @@ func handlePageResult(
 
 		return nil
 	}
+
+	state.tracker.Add(len(result.records))
 
 	if state.firstErr != nil {
 		return nil

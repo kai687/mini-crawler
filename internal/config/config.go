@@ -24,6 +24,8 @@ type Config struct {
 	Workers     int
 	FailOnError bool
 	Filter      string
+	Coverage    bool
+	Output      string
 }
 
 // FromFlags parses CLI flags and positional arguments into Config.
@@ -42,6 +44,8 @@ func FromFlags(args []string) (Config, error) {
 		"fail whole run when one URL cannot be crawled",
 	)
 	fs.StringVar(&cfg.Filter, "filter", "", "substring filter for sitemap URLs")
+	fs.BoolVar(&cfg.Coverage, "coverage", false, "print URL coverage summary to stderr after crawl")
+	fs.StringVar(&cfg.Output, "output", "", "write records to file instead of stdout")
 	fs.Usage = func() {
 		fmt.Fprintln(fs.Output(), "Usage:")
 		fmt.Fprintln(fs.Output(), "  docs-crawler [--mode single] [flags] <url>")
