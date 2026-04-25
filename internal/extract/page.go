@@ -17,10 +17,11 @@ var contentRootSelectors = []string{"#content", "#content-area"}
 // headingSelectorRelative matches in-content headings (with id) relative to a content root.
 const headingSelectorRelative = "h2[id], h3[id], h4[id], h5[id], h6[id]"
 
-// paramFieldSelector matches API reference parameter fields (e.g. indexName).
-// Header div carries an `id="parameter-..."` anchor; descendants expose
-// `data-component-part="field-name"` and a sibling `div.mt-4` with the description.
-const paramFieldSelector = `div[id^='parameter-']`
+// paramFieldSelector matches API reference field headers rendered with the
+// shared `param-head` component. IDs vary by section (`authorization-*`,
+// `parameter-*`, `body-*`, `response-*`, ...), so match the component class
+// instead of a specific prefix.
+const paramFieldSelector = `div.param-head[id]`
 
 const contentSelectorRelative = headingSelectorRelative + ", span[data-as='p'], li, " + paramFieldSelector
 
@@ -68,16 +69,21 @@ func pageRecordFromPage(page model.ParsedPage) model.Record {
 
 	lvl1 := stringPtr(normalizeWhitespace(page.Doc.Find("h1#page-title").First().Text()))
 
+	pageURL := recordutil.URLWithoutAnchor(page.URL)
+
 	return model.Record{
-		URL:         page.URL,
-		Type:        model.RecordTypeLvl1,
-		Title:       stringPtr(title),
-		Description: stringPtr(description),
+		URL:              pageURL,
+		URLWithoutAnchor: pageURL,
+		Breadcrumb:       recordutil.BreadcrumbFromURL(pageURL),
+		ContentType:      contentTypeFromURL(pageURL),
+		RecordType:       model.RecordTypeLvl1,
+		Title:            stringPtr(title),
+		Description:      stringPtr(description),
 		Hierarchy: model.Hierarchy{
 			Lvl1: lvl1,
 		},
 		Position: 0,
-		ObjectID: recordutil.ObjectIDFromURL(page.URL),
+		ObjectID: recordutil.ObjectIDFromURL(pageURL),
 	}
 }
 
@@ -199,7 +205,7 @@ func paramFieldRecordsFromSelection(
 	const fieldLevel = 3
 
 	heading := pageRecord
-	heading.Type = typeFromLevel(fieldLevel)
+	heading.RecordType = typeFromLevel(fieldLevel)
 	heading.Hierarchy = cloneHierarchy(currentHierarchy)
 	setHierarchyLevel(&heading.Hierarchy, fieldLevel, stringPtr(name))
 	clearHierarchyBelow(&heading.Hierarchy, fieldLevel)
@@ -332,7 +338,7 @@ func headingRecord(
 	}
 
 	record := pageRecord
-	record.Type = typeFromLevel(level)
+	record.RecordType = typeFromLevel(level)
 	record.Hierarchy = cloneHierarchy(currentHierarchy)
 	setHierarchyLevel(&record.Hierarchy, level, stringPtr(text))
 	clearHierarchyBelow(&record.Hierarchy, level)
@@ -360,7 +366,7 @@ func contentRecord(
 	position int,
 ) model.Record {
 	record := pageRecord
-	record.Type = model.RecordTypeContent
+	record.RecordType = model.RecordTypeContent
 	record.Content = stringPtr(text)
 	record.Hierarchy = cloneHierarchy(currentHierarchy)
 	record.Position = position
@@ -462,6 +468,19 @@ func cloneStringPtr(value *string) *string {
 	copiedValue := *value
 
 	return &copiedValue
+}
+
+func contentTypeFromURL(pageURL string) string {
+	path := recordutil.BreadcrumbFromURL(pageURL)
+
+	switch {
+	case strings.HasPrefix(path, "/guides"):
+		return "guide"
+	case strings.HasPrefix(path, "/rest-api"):
+		return "api"
+	default:
+		return ""
+	}
 }
 
 func normalizeWhitespace(value string) string {

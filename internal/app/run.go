@@ -230,7 +230,7 @@ func countHeadingRecords(records []model.Record) int {
 	count := 0
 
 	for _, record := range records {
-		switch record.Type {
+		switch record.RecordType {
 		case model.RecordTypeLvl2,
 			model.RecordTypeLvl3,
 			model.RecordTypeLvl4,

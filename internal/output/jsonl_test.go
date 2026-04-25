@@ -13,11 +13,14 @@ func TestJSONLWriterWrite(t *testing.T) {
 	writer := NewJSONLWriter(&buf)
 
 	err := writer.Write(model.Record{
-		URL:         "https://example.com/page",
-		Type:        "content",
-		Title:       stringPtr("Page Title"),
-		Description: stringPtr("Page description"),
-		Content:     stringPtr("Paragraph content"),
+		URL:              "https://example.com/page",
+		URLWithoutAnchor: "https://example.com/page",
+		Breadcrumb:       "/guides/getting-started",
+		ContentType:      "guide",
+		RecordType:       "content",
+		Title:            stringPtr("Page Title"),
+		Description:      stringPtr("Page description"),
+		Content:          stringPtr("Paragraph content"),
 		Hierarchy: model.Hierarchy{
 			Lvl1: stringPtr("Page Title"),
 			Lvl2: stringPtr("Section"),
@@ -36,7 +39,10 @@ func TestJSONLWriterWrite(t *testing.T) {
 
 	want := "{" +
 		"\"url\":\"https://example.com/page\"," +
-		"\"type\":\"content\"," +
+		"\"urlWithoutAnchor\":\"https://example.com/page\"," +
+		"\"breadcrumb\":\"/guides/getting-started\"," +
+		"\"contentType\":\"guide\"," +
+		"\"recordType\":\"content\"," +
 		"\"title\":\"Page Title\"," +
 		"\"description\":\"Page description\"," +
 		"\"content\":\"Paragraph content\"," +
@@ -58,11 +64,12 @@ func TestJSONLWriterWriteMultiple(t *testing.T) {
 
 	records := []model.Record{
 		{
-			URL:         "https://example.com/one",
-			Type:        "content",
-			Title:       stringPtr("One"),
-			Description: stringPtr("First"),
-			Content:     stringPtr("Body one"),
+			URL:              "https://example.com/one",
+			URLWithoutAnchor: "https://example.com/one",
+			RecordType:       "content",
+			Title:            stringPtr("One"),
+			Description:      stringPtr("First"),
+			Content:          stringPtr("Body one"),
 			Hierarchy: model.Hierarchy{
 				Lvl1: stringPtr("One"),
 				Lvl2: stringPtr("Section One"),
@@ -72,11 +79,12 @@ func TestJSONLWriterWriteMultiple(t *testing.T) {
 			ObjectID: "https:--example.com-one-0",
 		},
 		{
-			URL:         "https://example.com/two",
-			Type:        "content",
-			Title:       stringPtr("Two"),
-			Description: stringPtr("Second"),
-			Content:     stringPtr("Body two"),
+			URL:              "https://example.com/two",
+			URLWithoutAnchor: "https://example.com/two",
+			RecordType:       "content",
+			Title:            stringPtr("Two"),
+			Description:      stringPtr("Second"),
+			Content:          stringPtr("Body two"),
 			Hierarchy: model.Hierarchy{
 				Lvl1: stringPtr("Two"),
 				Lvl2: stringPtr("Section Two"),
@@ -98,7 +106,8 @@ func TestJSONLWriterWriteMultiple(t *testing.T) {
 
 	want := "{" +
 		"\"url\":\"https://example.com/one\"," +
-		"\"type\":\"content\"," +
+		"\"urlWithoutAnchor\":\"https://example.com/one\"," +
+		"\"recordType\":\"content\"," +
 		"\"title\":\"One\"," +
 		"\"description\":\"First\"," +
 		"\"content\":\"Body one\"," +
@@ -110,7 +119,8 @@ func TestJSONLWriterWriteMultiple(t *testing.T) {
 		"}\n" +
 		"{" +
 		"\"url\":\"https://example.com/two\"," +
-		"\"type\":\"content\"," +
+		"\"urlWithoutAnchor\":\"https://example.com/two\"," +
+		"\"recordType\":\"content\"," +
 		"\"title\":\"Two\"," +
 		"\"description\":\"Second\"," +
 		"\"content\":\"Body two\"," +

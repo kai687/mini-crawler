@@ -178,6 +178,59 @@ func TestPageExtractorBuildsPageHeadingParagraphAndListItemRecords(t *testing.T)
 	})
 }
 
+func TestPageExtractorSetsGuideContentTypeFromURL(t *testing.T) {
+	doc := mustDocument(
+		t,
+		`<html><body><h1 id="page-title">Guide Title</h1><div id="content">`+
+			`<h2 id="section">Section</h2>`+
+			`<span data-as="p">Paragraph</span>`+
+			`</div></body></html>`,
+	)
+
+	records, err := PageExtractor{}.Extract(model.ParsedPage{
+		URL: "https://www.algolia.com/doc/guides/building-search/intro",
+		Doc: doc,
+	})
+	if err != nil {
+		t.Fatalf("Extract() err = %v", err)
+	}
+
+	for i, record := range records {
+		if record.ContentType != "guide" {
+			t.Fatalf("records[%d].ContentType = %q, want %q", i, record.ContentType, "guide")
+		}
+
+		if record.Breadcrumb != "/guides/building-search/intro" {
+			t.Fatalf(
+				"records[%d].Breadcrumb = %q, want %q",
+				i,
+				record.Breadcrumb,
+				"/guides/building-search/intro",
+			)
+		}
+	}
+}
+
+func TestPageExtractorSetsAPIContentTypeFromURL(t *testing.T) {
+	doc := mustDocument(t, `<html><body><h1 id="page-title">API Title</h1></body></html>`)
+
+	records, err := PageExtractor{}.Extract(model.ParsedPage{
+		URL: "https://www.algolia.com/doc/rest-api/search/search-single-index",
+		Doc: doc,
+	})
+	if err != nil {
+		t.Fatalf("Extract() err = %v", err)
+	}
+
+	if got := records[0].ContentType; got != "api" {
+		t.Fatalf("records[0].ContentType = %q, want %q", got, "api")
+	}
+
+	if got := records[0].Breadcrumb; got != "/rest-api/search/search-single-index" {
+		t.Fatalf("records[0].Breadcrumb = %q, want %q", got, "/rest-api/search/search-single-index")
+	}
+}
+
 func TestPageExtractorFallsBackToTitleTag(t *testing.T) {
 	doc := mustDocument(t, `<html><head><title> Doc Title </title></head><body></body></html>`)
 
@@ -347,7 +400,7 @@ func TestPageExtractorIndexesAPIParameterField(t *testing.T) {
 		`<html><body><h1 id="page-title">Search single index</h1><div id="content">`+
 			`<h2 id="path-parameters">Path parameters</h2>`+
 			`<div class="primitive-param-field"><div class="py-6">`+
-			`<div class="flex font-mono" id="parameter-index-name">`+
+			`<div class="flex font-mono param-head" id="parameter-index-name">`+
 			`<div><div><a href="#parameter-index-name">link</a></div></div>`+
 			`<div data-component-part="field-name">indexName</div>`+
 			`<div data-component-part="field-meta">`+
@@ -402,6 +455,122 @@ func TestPageExtractorIndexesAPIParameterField(t *testing.T) {
 	})
 
 	_ = pathSectionURL
+}
+
+func TestPageExtractorIndexesAPIParamHeadAcrossSections(t *testing.T) {
+	doc := mustDocument(
+		t,
+		`<html><body><h1 id="page-title">Search single index</h1><div id="content">`+
+			`<h2 id="auth">Authorizations</h2>`+
+			`<div class="param-head" id="authorization-x-algolia-api-key">`+
+			`<div data-component-part="field-name">x-algolia-api-key</div>`+
+			`<div data-component-part="field-info-pill">string</div>`+
+			`<div data-component-part="field-required-pill">required</div>`+
+			`</div>`+
+			`<div class="mt-4"><div><p>API key.</p></div></div>`+
+			`<h2 id="body">Body</h2>`+
+			`<div class="param-head" id="body-one-of-0-params">`+
+			`<div data-component-part="field-name">params</div>`+
+			`<div data-component-part="field-info-pill">string</div>`+
+			`</div>`+
+			`<div class="mt-4"><div><p>Search parameters.</p></div></div>`+
+			`<h2 id="response">Response</h2>`+
+			`<div class="param-head" id="response-hits">`+
+			`<div data-component-part="field-name">hits</div>`+
+			`<div data-component-part="field-info-pill">object[]</div>`+
+			`<div data-component-part="field-required-pill">required</div>`+
+			`</div>`+
+			`<div class="mt-4"><div><p>Search results.</p></div></div>`+
+			`</div></body></html>`,
+	)
+
+	records, err := PageExtractor{}.Extract(model.ParsedPage{
+		URL: "https://example.com/page",
+		Doc: doc,
+	})
+	if err != nil {
+		t.Fatalf("Extract() err = %v", err)
+	}
+
+	if len(records) != 10 {
+		t.Fatalf("len(records) = %d, want 10", len(records))
+	}
+
+	authURL := recordutil.URLWithAnchor(
+		"https://example.com/page",
+		"authorization-x-algolia-api-key",
+	)
+	bodyURL := recordutil.URLWithAnchor("https://example.com/page", "body-one-of-0-params")
+	responseURL := recordutil.URLWithAnchor("https://example.com/page", "response-hits")
+
+	assertRecord(t, records[2], recordExpectation{
+		url:      authURL,
+		typeName: "lvl3",
+		title:    stringPtr("Search single index"),
+		lvl1:     stringPtr("Search single index"),
+		lvl2:     stringPtr("Authorizations"),
+		lvl3:     stringPtr("x-algolia-api-key"),
+		position: 2,
+		objectID: recordutil.ObjectIDFromURL(authURL),
+	})
+
+	assertRecord(t, records[3], recordExpectation{
+		url:      authURL,
+		typeName: "content",
+		title:    stringPtr("Search single index"),
+		content:  "string. required. API key.",
+		lvl1:     stringPtr("Search single index"),
+		lvl2:     stringPtr("Authorizations"),
+		lvl3:     stringPtr("x-algolia-api-key"),
+		position: 3,
+		objectID: recordutil.ObjectIDWithPosition(recordutil.ObjectIDFromURL(authURL), 3),
+	})
+
+	assertRecord(t, records[5], recordExpectation{
+		url:      bodyURL,
+		typeName: "lvl3",
+		title:    stringPtr("Search single index"),
+		lvl1:     stringPtr("Search single index"),
+		lvl2:     stringPtr("Body"),
+		lvl3:     stringPtr("params"),
+		position: 5,
+		objectID: recordutil.ObjectIDFromURL(bodyURL),
+	})
+
+	assertRecord(t, records[6], recordExpectation{
+		url:      bodyURL,
+		typeName: "content",
+		title:    stringPtr("Search single index"),
+		content:  "string. Search parameters.",
+		lvl1:     stringPtr("Search single index"),
+		lvl2:     stringPtr("Body"),
+		lvl3:     stringPtr("params"),
+		position: 6,
+		objectID: recordutil.ObjectIDWithPosition(recordutil.ObjectIDFromURL(bodyURL), 6),
+	})
+
+	assertRecord(t, records[8], recordExpectation{
+		url:      responseURL,
+		typeName: "lvl3",
+		title:    stringPtr("Search single index"),
+		lvl1:     stringPtr("Search single index"),
+		lvl2:     stringPtr("Response"),
+		lvl3:     stringPtr("hits"),
+		position: 8,
+		objectID: recordutil.ObjectIDFromURL(responseURL),
+	})
+
+	assertRecord(t, records[9], recordExpectation{
+		url:      responseURL,
+		typeName: "content",
+		title:    stringPtr("Search single index"),
+		content:  "object[]. required. Search results.",
+		lvl1:     stringPtr("Search single index"),
+		lvl2:     stringPtr("Response"),
+		lvl3:     stringPtr("hits"),
+		position: 9,
+		objectID: recordutil.ObjectIDWithPosition(recordutil.ObjectIDFromURL(responseURL), 9),
+	})
 }
 
 func TestShouldIndexListItem(t *testing.T) {
@@ -465,6 +634,8 @@ func TestCloneHierarchy(t *testing.T) {
 
 type recordExpectation struct {
 	url         string
+	breadcrumb  string
+	contentType string
 	typeName    model.RecordType
 	title       *string
 	description *string
@@ -481,7 +652,13 @@ func assertRecord(t *testing.T, record model.Record, want recordExpectation) {
 	t.Helper()
 
 	assertEqual(t, "URL", record.URL, want.url)
-	assertEqual(t, "Type", string(record.Type), string(want.typeName))
+
+	if want.breadcrumb != "" {
+		assertEqual(t, "Breadcrumb", record.Breadcrumb, want.breadcrumb)
+	}
+
+	assertEqual(t, "ContentType", record.ContentType, want.contentType)
+	assertEqual(t, "RecordType", string(record.RecordType), string(want.typeName))
 	assertStringPtr(t, "Title", record.Title, want.title)
 	assertStringPtr(t, "Description", record.Description, want.description)
 	assertStringPtr(t, "Content", record.Content, stringPtr(want.content))

@@ -61,8 +61,14 @@ const (
 type Record struct {
 	// Canonical URL for this record, including #anchor
 	URL string `json:"url"`
+	// Page URL without any #anchor, useful for grouping/distinct in Algolia
+	URLWithoutAnchor string `json:"urlWithoutAnchor"`
+	// Breadcrumb path derived from URL path, with leading /doc removed
+	Breadcrumb string `json:"breadcrumb,omitempty"`
+	// High-level content classification inferred from URL path (for example: guide, api)
+	ContentType string `json:"contentType,omitempty"`
 	// Record kind (content, lvl1, lvl2, ..., lvl6)
-	Type RecordType `json:"type"`
+	RecordType RecordType `json:"recordType"`
 	// Page title (from head)
 	Title *string `json:"title,omitempty"`
 	// Page meta description

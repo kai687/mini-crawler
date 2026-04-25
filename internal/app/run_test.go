@@ -46,7 +46,8 @@ func TestRunSingleMode(t *testing.T) {
 
 	want := "{" +
 		"\"url\":\"" + server.URL + "\"," +
-		"\"type\":\"lvl1\"," +
+		"\"urlWithoutAnchor\":\"" + server.URL + "\"," +
+		"\"recordType\":\"lvl1\"," +
 		"\"title\":\"Hello Docs\"," +
 		"\"description\":\"Hello docs\"," +
 		"\"hierarchy\":{" +
@@ -56,7 +57,8 @@ func TestRunSingleMode(t *testing.T) {
 		"}\n" +
 		"{" +
 		"\"url\":\"" + sectionURL + "\"," +
-		"\"type\":\"lvl2\"," +
+		"\"urlWithoutAnchor\":\"" + server.URL + "\"," +
+		"\"recordType\":\"lvl2\"," +
 		"\"title\":\"Hello Docs\"," +
 		"\"description\":\"Hello docs\"," +
 		"\"hierarchy\":{" +
@@ -66,7 +68,8 @@ func TestRunSingleMode(t *testing.T) {
 		"}\n" +
 		"{" +
 		"\"url\":\"" + sectionURL + "\"," +
-		"\"type\":\"content\"," +
+		"\"urlWithoutAnchor\":\"" + server.URL + "\"," +
+		"\"recordType\":\"content\"," +
 		"\"title\":\"Hello Docs\"," +
 		"\"description\":\"Hello docs\"," +
 		"\"content\":\"First paragraph\"," +
@@ -77,7 +80,8 @@ func TestRunSingleMode(t *testing.T) {
 		"}\n" +
 		"{" +
 		"\"url\":\"" + server.URL + "#first-detail\"," +
-		"\"type\":\"lvl3\"," +
+		"\"urlWithoutAnchor\":\"" + server.URL + "\"," +
+		"\"recordType\":\"lvl3\"," +
 		"\"title\":\"Hello Docs\"," +
 		"\"description\":\"Hello docs\"," +
 		"\"hierarchy\":{" +

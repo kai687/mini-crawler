@@ -6,7 +6,10 @@
 //
 //	{
 //	  "url": "https://example.com/page",
-//	  "type": "lvl1",
+//	  "urlWithoutAnchor": "https://example.com/page",
+//	  "breadcrumb": "/guides/getting-started",
+//	  "contentType": "guide",
+//	  "recordType": "lvl1",
 //	  "title": "Page Title",
 //	  "description": "Page description",
 //	  "hierarchy": {
@@ -20,7 +23,10 @@
 //
 //	{
 //	  "url": "https://example.com/page#section",
-//	  "type": "lvl2",
+//	  "urlWithoutAnchor": "https://example.com/page",
+//	  "breadcrumb": "/guides/getting-started",
+//	  "contentType": "guide",
+//	  "recordType": "lvl2",
 //	  "title": "Page Title",
 //	  "description": "Page description",
 //	  "hierarchy": {
@@ -35,7 +41,10 @@
 //
 //	{
 //	  "url": "https://example.com/page#section",
-//	  "type": "content",
+//	  "urlWithoutAnchor": "https://example.com/page",
+//	  "breadcrumb": "/guides/getting-started",
+//	  "contentType": "guide",
+//	  "recordType": "content",
 //	  "title": "Page Title",
 //	  "description": "Page description",
 //	  "content": "Paragraph text",
