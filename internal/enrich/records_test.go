@@ -336,6 +336,67 @@ func TestRecordEnricherAddsMethodNameForSDKMethodDocURLs(t *testing.T) {
 	})
 }
 
+func TestRecordEnricherAddsLegacyVariantForV1SDKDocURLs(t *testing.T) {
+	doc := model.ExtractedDocument{
+		PageURL:     "https://www.algolia.com/doc/libraries/sdk/v1/methods/search",
+		Description: stringPtr("Legacy SDK docs"),
+		PageHeading: stringPtr("Search"),
+	}
+
+	records, err := RecordEnricher{}.Enrich(doc)
+	if err != nil {
+		t.Fatalf("Enrich() err = %v", err)
+	}
+
+	if len(records) != 1 {
+		t.Fatalf("len(records) = %d, want 1", len(records))
+	}
+
+	assertRecord(t, records[0], recordExpectation{
+		url:         "https://www.algolia.com/doc/libraries/sdk/v1/methods/search",
+		contentType: "sdk",
+		variant:     "legacy",
+		typeName:    model.RecordTypeLvl1,
+		content:     "Legacy SDK docs",
+		lvl1:        stringPtr("Search"),
+		position:    0,
+		objectID: recordutil.ObjectIDFromURL(
+			"https://www.algolia.com/doc/libraries/sdk/v1/methods/search",
+		),
+	})
+}
+
+func TestRecordEnricherAddsLegacyVariantForDeprecatedIngestionRESTAPIDocURLs(t *testing.T) {
+	doc := model.ExtractedDocument{
+		PageURL:     "https://www.algolia.com/doc/rest-api/ingestion/update-task-v1",
+		Description: stringPtr("Legacy ingestion endpoint docs"),
+		PageHeading: stringPtr("Update task v1"),
+	}
+
+	records, err := RecordEnricher{}.Enrich(doc)
+	if err != nil {
+		t.Fatalf("Enrich() err = %v", err)
+	}
+
+	if len(records) != 1 {
+		t.Fatalf("len(records) = %d, want 1", len(records))
+	}
+
+	assertRecord(t, records[0], recordExpectation{
+		url:         "https://www.algolia.com/doc/rest-api/ingestion/update-task-v1",
+		contentType: "api",
+		variant:     "legacy",
+		typeName:    model.RecordTypeLvl1,
+		content:     "Legacy ingestion endpoint docs",
+		lvl1:        stringPtr("Update task v1"),
+		methodName:  "updateTaskV1",
+		position:    0,
+		objectID: recordutil.ObjectIDFromURL(
+			"https://www.algolia.com/doc/rest-api/ingestion/update-task-v1",
+		),
+	})
+}
+
 func TestRecordEnricherAddsAPIContentTypeForAPIParameterDocURLs(t *testing.T) {
 	doc := model.ExtractedDocument{
 		PageURL:     "https://www.algolia.com/doc/api-reference/api-parameters/hitsPerPage",
@@ -426,6 +487,7 @@ func TestRecordEnricherAddsSDKContentTypeForFrameworkIntegrationDocURLs(t *testi
 type recordExpectation struct {
 	url         string
 	contentType string
+	variant     string
 	typeName    model.RecordType
 	content     string
 	methodName  string
@@ -442,6 +504,7 @@ func assertRecord(t *testing.T, record model.Record, want recordExpectation) {
 
 	assertEqual(t, "URL", record.URL, want.url)
 	assertEqual(t, "ContentType", record.ContentType, want.contentType)
+	assertEqual(t, "Variant", record.Variant, want.variant)
 
 	if record.RecordType != want.typeName {
 		t.Fatalf("RecordType = %q, want %q", record.RecordType, want.typeName)

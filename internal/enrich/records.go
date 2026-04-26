@@ -66,6 +66,7 @@ func newPageRecord(doc model.ExtractedDocument) model.Record {
 		BreadcrumbSegments:  breadcrumbSegments,
 		BreadcrumbHierarchy: recordutil.BreadcrumbHierarchyFromSegments(breadcrumbSegments),
 		ContentType:         contentTypeFromURL(pageURL),
+		Variant:             variantFromURL(pageURL),
 		MethodName:          recordutil.MethodNameFromURL(pageURL),
 		RecordType:          model.RecordTypeLvl1,
 		Content:             cloneStringPtr(doc.Description),
@@ -246,4 +247,21 @@ func contentTypeFromURL(pageURL string) string {
 	default:
 		return ""
 	}
+}
+
+func variantFromURL(pageURL string) string {
+	path := recordutil.BreadcrumbPathFromURL(pageURL)
+
+	if strings.HasPrefix(path, "/libraries/sdk/v1") {
+		return "legacy"
+	}
+
+	if strings.HasPrefix(path, "/rest-api/ingestion/") {
+		lastSegment := path[strings.LastIndex(path, "/")+1:]
+		if strings.HasSuffix(lastSegment, "v1") {
+			return "legacy"
+		}
+	}
+
+	return ""
 }

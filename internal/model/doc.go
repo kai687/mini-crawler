@@ -12,6 +12,7 @@
 //	    "lvl0": "Guides"
 //	  },
 //	  "contentType": "guide",
+//	  "variant": "legacy",
 //	  "recordType": "lvl1",
 //	  "hierarchy": {
 //	    "lvl1": "Page Title"
@@ -30,6 +31,7 @@
 //	    "lvl0": "Guides"
 //	  },
 //	  "contentType": "guide",
+//	  "variant": "legacy",
 //	  "recordType": "lvl2",
 //	  "hierarchy": {
 //	    "lvl1": "Page Title",
@@ -49,6 +51,7 @@
 //	    "lvl0": "Guides"
 //	  },
 //	  "contentType": "guide",
+//	  "variant": "legacy",
 //	  "recordType": "content",
 //	  "content": "Paragraph text",
 //	  "hierarchy": {

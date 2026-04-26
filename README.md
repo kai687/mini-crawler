@@ -106,6 +106,14 @@ Several fields come from URL shape, not page DOM:
 - `contentType` is inferred from path prefix only:
   - `/guides` -> `guide`
   - `/rest-api` -> `api`
+  - `/api-reference/api-parameters` -> `api`
+  - `/integration` -> `integration`
+  - `/libraries/sdk` -> `sdk`
+  - `/framework-integration` -> `sdk`
+  - anything else -> empty string
+- `variant` is inferred from URL shape only:
+  - `/libraries/sdk/v1` -> `legacy`
+  - `/rest-api/ingestion/*v1` -> `legacy`
   - anything else -> empty string
 
 ### Record model assumptions
@@ -160,6 +168,7 @@ Each JSON line is one `Record`.
 | `breadcrumbSegments` | `string[]` | Humanized URL path segments, excluding final path segment. | Display/context metadata. |
 | `breadcrumbHierarchy` | object | Cumulative hierarchy built from `breadcrumbSegments`. | Hierarchical metadata for UI/faceting if needed. |
 | `contentType` | string | Inferred from URL prefix: `/guides` -> `guide`, `/rest-api` -> `api`, `/libraries/sdk` -> `sdk`. | Current faceting/filter field. |
+| `variant` | string | Inferred from URL shape: `/libraries/sdk/v1` -> `legacy`; `/rest-api/ingestion/*v1` -> `legacy`. Omitted otherwise. | Extra filter/facet field for legacy doc subsets. |
 | `methodName` | string | For `/doc/rest-api/...` and `/doc/libraries/sdk/methods/...` URLs, camelCase from final path slug, for example `/search-single-index` -> `searchSingleIndex`. | Exact API method-name recall + boost field. |
 | `recordType` | string | Derived from extracted unit kind and heading depth. | Tells what semantic unit record represents. |
 | `content` | string/null | Page description, body text, or synthesized field description depending on record type. | Main full-text body field. Also snippet source. |
@@ -235,6 +244,16 @@ Current values:
 - omitted otherwise
 
 Important because current Algolia settings facet on `contentType`.
+
+#### `variant`
+URL-path variant classification.
+
+Current values:
+- `legacy` for paths starting with `/libraries/sdk/v1`
+- `legacy` for `/rest-api/ingestion/` paths whose final segment ends with `v1` (for example `/update-task-v1`)
+- omitted otherwise
+
+Useful for filtering legacy SDK docs separately from current SDK docs.
 
 #### `recordType`
 Kind of record.
