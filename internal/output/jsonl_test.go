@@ -21,6 +21,7 @@ func TestJSONLWriterWrite(t *testing.T) {
 			Lvl1: stringPtr("Guides > Getting Started"),
 		},
 		ContentType: "guide",
+		Product:     "autocomplete",
 		MethodName:  "searchSingleIndex",
 		RecordType:  "content",
 		Content:     stringPtr("Paragraph content"),
@@ -46,6 +47,7 @@ func TestJSONLWriterWrite(t *testing.T) {
 		"\"breadcrumbSegments\":[\"Guides\",\"Getting Started\"]," +
 		"\"breadcrumbHierarchy\":{\"lvl0\":\"Guides\",\"lvl1\":\"Guides \\u003e Getting Started\"}," +
 		"\"contentType\":\"guide\"," +
+		"\"product\":\"autocomplete\"," +
 		"\"methodName\":\"searchSingleIndex\"," +
 		"\"recordType\":\"content\"," +
 		"\"content\":\"Paragraph content\"," +

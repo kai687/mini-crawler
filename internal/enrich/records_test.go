@@ -204,6 +204,10 @@ func TestRecordEnricherComputesBreadcrumbsAndContentType(t *testing.T) {
 			t.Fatalf("records[%d].ContentType = %q, want %q", i, record.ContentType, "guide")
 		}
 
+		if record.Product != "" {
+			t.Fatalf("records[%d].Product = %q, want empty", i, record.Product)
+		}
+
 		if len(record.BreadcrumbSegments) != 2 {
 			t.Fatalf(
 				"len(records[%d].BreadcrumbSegments) = %d, want 2",
@@ -229,6 +233,666 @@ func TestRecordEnricherComputesBreadcrumbsAndContentType(t *testing.T) {
 			t.Fatalf("BreadcrumbHierarchy.Lvl2 = %v, want nil", record.BreadcrumbHierarchy.Lvl2)
 		}
 	}
+}
+
+func TestRecordEnricherAddsProductForUILibrariesAutocompleteDocURLs(t *testing.T) {
+	doc := model.ExtractedDocument{
+		PageURL:     "https://www.algolia.com/doc/ui-libraries/autocomplete/core-concepts/templates",
+		Description: stringPtr("Autocomplete docs"),
+		PageHeading: stringPtr("Templates"),
+	}
+
+	records, err := RecordEnricher{}.Enrich(doc)
+	if err != nil {
+		t.Fatalf("Enrich() err = %v", err)
+	}
+
+	if len(records) != 1 {
+		t.Fatalf("len(records) = %d, want 1", len(records))
+	}
+
+	assertRecord(t, records[0], recordExpectation{
+		url:      "https://www.algolia.com/doc/ui-libraries/autocomplete/core-concepts/templates",
+		product:  "autocomplete",
+		typeName: model.RecordTypeLvl1,
+		content:  "Autocomplete docs",
+		lvl1:     stringPtr("Templates"),
+		position: 0,
+		objectID: recordutil.ObjectIDFromURL(
+			"https://www.algolia.com/doc/ui-libraries/autocomplete/core-concepts/templates",
+		),
+	})
+}
+
+func TestRecordEnricherAddsProductForCrawlerToolDocURLs(t *testing.T) {
+	doc := model.ExtractedDocument{
+		PageURL:     "https://www.algolia.com/doc/tools/crawler/getting-started",
+		Description: stringPtr("Crawler docs"),
+		PageHeading: stringPtr("Getting started"),
+	}
+
+	records, err := RecordEnricher{}.Enrich(doc)
+	if err != nil {
+		t.Fatalf("Enrich() err = %v", err)
+	}
+
+	if len(records) != 1 {
+		t.Fatalf("len(records) = %d, want 1", len(records))
+	}
+
+	assertRecord(t, records[0], recordExpectation{
+		url:      "https://www.algolia.com/doc/tools/crawler/getting-started",
+		product:  "crawler",
+		typeName: model.RecordTypeLvl1,
+		content:  "Crawler docs",
+		lvl1:     stringPtr("Getting started"),
+		position: 0,
+		objectID: recordutil.ObjectIDFromURL(
+			"https://www.algolia.com/doc/tools/crawler/getting-started",
+		),
+	})
+}
+
+func TestRecordEnricherAddsProductForCLIToolDocURLs(t *testing.T) {
+	doc := model.ExtractedDocument{
+		PageURL:     "https://www.algolia.com/doc/tools/cli/get-started/install",
+		Description: stringPtr("CLI docs"),
+		PageHeading: stringPtr("Install"),
+	}
+
+	records, err := RecordEnricher{}.Enrich(doc)
+	if err != nil {
+		t.Fatalf("Enrich() err = %v", err)
+	}
+
+	if len(records) != 1 {
+		t.Fatalf("len(records) = %d, want 1", len(records))
+	}
+
+	assertRecord(t, records[0], recordExpectation{
+		url:      "https://www.algolia.com/doc/tools/cli/get-started/install",
+		product:  "cli",
+		typeName: model.RecordTypeLvl1,
+		content:  "CLI docs",
+		lvl1:     stringPtr("Install"),
+		position: 0,
+		objectID: recordutil.ObjectIDFromURL(
+			"https://www.algolia.com/doc/tools/cli/get-started/install",
+		),
+	})
+}
+
+func TestRecordEnricherAddsProductForShopifyIntegrationDocURLs(t *testing.T) {
+	doc := model.ExtractedDocument{
+		PageURL:     "https://www.algolia.com/doc/integration/shopify/getting-started",
+		Description: stringPtr("Shopify docs"),
+		PageHeading: stringPtr("Getting started"),
+	}
+
+	records, err := RecordEnricher{}.Enrich(doc)
+	if err != nil {
+		t.Fatalf("Enrich() err = %v", err)
+	}
+
+	if len(records) != 1 {
+		t.Fatalf("len(records) = %d, want 1", len(records))
+	}
+
+	assertRecord(t, records[0], recordExpectation{
+		url:         "https://www.algolia.com/doc/integration/shopify/getting-started",
+		contentType: "integration",
+		product:     "shopify",
+		typeName:    model.RecordTypeLvl1,
+		content:     "Shopify docs",
+		lvl1:        stringPtr("Getting started"),
+		position:    0,
+		objectID: recordutil.ObjectIDFromURL(
+			"https://www.algolia.com/doc/integration/shopify/getting-started",
+		),
+	})
+}
+
+func TestRecordEnricherAddsProductForBigCommerceIntegrationDocURLs(t *testing.T) {
+	doc := model.ExtractedDocument{
+		PageURL:     "https://www.algolia.com/doc/integration/bigcommerce/getting-started",
+		Description: stringPtr("BigCommerce docs"),
+		PageHeading: stringPtr("Getting started"),
+	}
+
+	records, err := RecordEnricher{}.Enrich(doc)
+	if err != nil {
+		t.Fatalf("Enrich() err = %v", err)
+	}
+
+	if len(records) != 1 {
+		t.Fatalf("len(records) = %d, want 1", len(records))
+	}
+
+	assertRecord(t, records[0], recordExpectation{
+		url:         "https://www.algolia.com/doc/integration/bigcommerce/getting-started",
+		contentType: "integration",
+		product:     "bigcommerce",
+		typeName:    model.RecordTypeLvl1,
+		content:     "BigCommerce docs",
+		lvl1:        stringPtr("Getting started"),
+		position:    0,
+		objectID: recordutil.ObjectIDFromURL(
+			"https://www.algolia.com/doc/integration/bigcommerce/getting-started",
+		),
+	})
+}
+
+func TestRecordEnricherAddsProductForCommercetoolsIntegrationDocURLs(t *testing.T) {
+	doc := model.ExtractedDocument{
+		PageURL:     "https://www.algolia.com/doc/integration/commercetools/getting-started",
+		Description: stringPtr("Commercetools docs"),
+		PageHeading: stringPtr("Getting started"),
+	}
+
+	records, err := RecordEnricher{}.Enrich(doc)
+	if err != nil {
+		t.Fatalf("Enrich() err = %v", err)
+	}
+
+	if len(records) != 1 {
+		t.Fatalf("len(records) = %d, want 1", len(records))
+	}
+
+	assertRecord(t, records[0], recordExpectation{
+		url:         "https://www.algolia.com/doc/integration/commercetools/getting-started",
+		contentType: "integration",
+		product:     "commercetools",
+		typeName:    model.RecordTypeLvl1,
+		content:     "Commercetools docs",
+		lvl1:        stringPtr("Getting started"),
+		position:    0,
+		objectID: recordutil.ObjectIDFromURL(
+			"https://www.algolia.com/doc/integration/commercetools/getting-started",
+		),
+	})
+}
+
+func TestRecordEnricherAddsProductForMagentoIntegrationDocURLs(t *testing.T) {
+	doc := model.ExtractedDocument{
+		PageURL:     "https://www.algolia.com/doc/integration/magento-2/getting-started",
+		Description: stringPtr("Magento docs"),
+		PageHeading: stringPtr("Getting started"),
+	}
+
+	records, err := RecordEnricher{}.Enrich(doc)
+	if err != nil {
+		t.Fatalf("Enrich() err = %v", err)
+	}
+
+	if len(records) != 1 {
+		t.Fatalf("len(records) = %d, want 1", len(records))
+	}
+
+	assertRecord(t, records[0], recordExpectation{
+		url:         "https://www.algolia.com/doc/integration/magento-2/getting-started",
+		contentType: "integration",
+		product:     "magento",
+		typeName:    model.RecordTypeLvl1,
+		content:     "Magento docs",
+		lvl1:        stringPtr("Getting started"),
+		position:    0,
+		objectID: recordutil.ObjectIDFromURL(
+			"https://www.algolia.com/doc/integration/magento-2/getting-started",
+		),
+	})
+}
+
+func TestRecordEnricherAddsProductForSFCCIntegrationDocURLs(t *testing.T) {
+	doc := model.ExtractedDocument{
+		PageURL:     "https://www.algolia.com/doc/integration/salesforce-commerce-cloud-b2c/getting-started",
+		Description: stringPtr("SFCC docs"),
+		PageHeading: stringPtr("Getting started"),
+	}
+
+	records, err := RecordEnricher{}.Enrich(doc)
+	if err != nil {
+		t.Fatalf("Enrich() err = %v", err)
+	}
+
+	if len(records) != 1 {
+		t.Fatalf("len(records) = %d, want 1", len(records))
+	}
+
+	assertRecord(t, records[0], recordExpectation{
+		url:         "https://www.algolia.com/doc/integration/salesforce-commerce-cloud-b2c/getting-started",
+		contentType: "integration",
+		product:     "sfcc",
+		typeName:    model.RecordTypeLvl1,
+		content:     "SFCC docs",
+		lvl1:        stringPtr("Getting started"),
+		position:    0,
+		objectID: recordutil.ObjectIDFromURL(
+			"https://www.algolia.com/doc/integration/salesforce-commerce-cloud-b2c/getting-started",
+		),
+	})
+}
+
+func TestRecordEnricherAddsProductForZendeskIntegrationDocURLs(t *testing.T) {
+	doc := model.ExtractedDocument{
+		PageURL:     "https://www.algolia.com/doc/integration/zendesk/getting-started",
+		Description: stringPtr("Zendesk docs"),
+		PageHeading: stringPtr("Getting started"),
+	}
+
+	records, err := RecordEnricher{}.Enrich(doc)
+	if err != nil {
+		t.Fatalf("Enrich() err = %v", err)
+	}
+
+	if len(records) != 1 {
+		t.Fatalf("len(records) = %d, want 1", len(records))
+	}
+
+	assertRecord(t, records[0], recordExpectation{
+		url:         "https://www.algolia.com/doc/integration/zendesk/getting-started",
+		contentType: "integration",
+		product:     "zendesk",
+		typeName:    model.RecordTypeLvl1,
+		content:     "Zendesk docs",
+		lvl1:        stringPtr("Getting started"),
+		position:    0,
+		objectID: recordutil.ObjectIDFromURL(
+			"https://www.algolia.com/doc/integration/zendesk/getting-started",
+		),
+	})
+}
+
+func TestRecordEnricherAddsProductForDjangoFrameworkIntegrationDocURLs(t *testing.T) {
+	doc := model.ExtractedDocument{
+		PageURL:     "https://www.algolia.com/doc/framework-integration/django/getting-started",
+		Description: stringPtr("Django docs"),
+		PageHeading: stringPtr("Getting started"),
+	}
+
+	records, err := RecordEnricher{}.Enrich(doc)
+	if err != nil {
+		t.Fatalf("Enrich() err = %v", err)
+	}
+
+	if len(records) != 1 {
+		t.Fatalf("len(records) = %d, want 1", len(records))
+	}
+
+	assertRecord(t, records[0], recordExpectation{
+		url:         "https://www.algolia.com/doc/framework-integration/django/getting-started",
+		contentType: "sdk",
+		product:     "django",
+		typeName:    model.RecordTypeLvl1,
+		content:     "Django docs",
+		lvl1:        stringPtr("Getting started"),
+		position:    0,
+		objectID: recordutil.ObjectIDFromURL(
+			"https://www.algolia.com/doc/framework-integration/django/getting-started",
+		),
+	})
+}
+
+func TestRecordEnricherAddsProductForRailsFrameworkIntegrationDocURLs(t *testing.T) {
+	doc := model.ExtractedDocument{
+		PageURL:     "https://www.algolia.com/doc/framework-integration/rails/getting-started",
+		Description: stringPtr("Rails docs"),
+		PageHeading: stringPtr("Getting started"),
+	}
+
+	records, err := RecordEnricher{}.Enrich(doc)
+	if err != nil {
+		t.Fatalf("Enrich() err = %v", err)
+	}
+
+	if len(records) != 1 {
+		t.Fatalf("len(records) = %d, want 1", len(records))
+	}
+
+	assertRecord(t, records[0], recordExpectation{
+		url:         "https://www.algolia.com/doc/framework-integration/rails/getting-started",
+		contentType: "sdk",
+		product:     "rails",
+		typeName:    model.RecordTypeLvl1,
+		content:     "Rails docs",
+		lvl1:        stringPtr("Getting started"),
+		position:    0,
+		objectID: recordutil.ObjectIDFromURL(
+			"https://www.algolia.com/doc/framework-integration/rails/getting-started",
+		),
+	})
+}
+
+func TestRecordEnricherAddsProductForSymfonyFrameworkIntegrationDocURLs(t *testing.T) {
+	doc := model.ExtractedDocument{
+		PageURL:     "https://www.algolia.com/doc/framework-integration/symfony/getting-started",
+		Description: stringPtr("Symfony docs"),
+		PageHeading: stringPtr("Getting started"),
+	}
+
+	records, err := RecordEnricher{}.Enrich(doc)
+	if err != nil {
+		t.Fatalf("Enrich() err = %v", err)
+	}
+
+	if len(records) != 1 {
+		t.Fatalf("len(records) = %d, want 1", len(records))
+	}
+
+	assertRecord(t, records[0], recordExpectation{
+		url:         "https://www.algolia.com/doc/framework-integration/symfony/getting-started",
+		contentType: "sdk",
+		product:     "symfony",
+		typeName:    model.RecordTypeLvl1,
+		content:     "Symfony docs",
+		lvl1:        stringPtr("Getting started"),
+		position:    0,
+		objectID: recordutil.ObjectIDFromURL(
+			"https://www.algolia.com/doc/framework-integration/symfony/getting-started",
+		),
+	})
+}
+
+func TestRecordEnricherAddsProductForLaravelFrameworkIntegrationDocURLs(t *testing.T) {
+	doc := model.ExtractedDocument{
+		PageURL:     "https://www.algolia.com/doc/framework-integration/laravel/getting-started",
+		Description: stringPtr("Laravel docs"),
+		PageHeading: stringPtr("Getting started"),
+	}
+
+	records, err := RecordEnricher{}.Enrich(doc)
+	if err != nil {
+		t.Fatalf("Enrich() err = %v", err)
+	}
+
+	if len(records) != 1 {
+		t.Fatalf("len(records) = %d, want 1", len(records))
+	}
+
+	assertRecord(t, records[0], recordExpectation{
+		url:         "https://www.algolia.com/doc/framework-integration/laravel/getting-started",
+		contentType: "sdk",
+		product:     "laravel",
+		typeName:    model.RecordTypeLvl1,
+		content:     "Laravel docs",
+		lvl1:        stringPtr("Getting started"),
+		position:    0,
+		objectID: recordutil.ObjectIDFromURL(
+			"https://www.algolia.com/doc/framework-integration/laravel/getting-started",
+		),
+	})
+}
+
+func TestRecordEnricherAddsProductForBigQueryConnectorDocURLs(t *testing.T) {
+	const pageURL = "https://www.algolia.com/doc/sending-and-managing-data/send-and-update-your-data/" +
+		"connectors/bigquery/getting-started"
+
+	doc := model.ExtractedDocument{
+		PageURL:     pageURL,
+		Description: stringPtr("BigQuery connector docs"),
+		PageHeading: stringPtr("Getting started"),
+	}
+
+	records, err := RecordEnricher{}.Enrich(doc)
+	if err != nil {
+		t.Fatalf("Enrich() err = %v", err)
+	}
+
+	if len(records) != 1 {
+		t.Fatalf("len(records) = %d, want 1", len(records))
+	}
+
+	assertRecord(t, records[0], recordExpectation{
+		url:      pageURL,
+		product:  "bigquery",
+		typeName: model.RecordTypeLvl1,
+		content:  "BigQuery connector docs",
+		lvl1:     stringPtr("Getting started"),
+		position: 0,
+		objectID: recordutil.ObjectIDFromURL(pageURL),
+	})
+}
+
+func TestRecordEnricherAddsProductForElasticsearchConnectorDocURLs(t *testing.T) {
+	const pageURL = "https://www.algolia.com/doc/sending-and-managing-data/send-and-update-your-data/" +
+		"connectors/elasticsearch/getting-started"
+
+	doc := model.ExtractedDocument{
+		PageURL:     pageURL,
+		Description: stringPtr("Elasticsearch connector docs"),
+		PageHeading: stringPtr("Getting started"),
+	}
+
+	records, err := RecordEnricher{}.Enrich(doc)
+	if err != nil {
+		t.Fatalf("Enrich() err = %v", err)
+	}
+
+	if len(records) != 1 {
+		t.Fatalf("len(records) = %d, want 1", len(records))
+	}
+
+	assertRecord(t, records[0], recordExpectation{
+		url:      pageURL,
+		product:  "elasticsearch",
+		typeName: model.RecordTypeLvl1,
+		content:  "Elasticsearch connector docs",
+		lvl1:     stringPtr("Getting started"),
+		position: 0,
+		objectID: recordutil.ObjectIDFromURL(pageURL),
+	})
+}
+
+func TestRecordEnricherAddsProductForMySQLConnectorDocURLs(t *testing.T) {
+	const pageURL = "https://www.algolia.com/doc/sending-and-managing-data/send-and-update-your-data/" +
+		"connectors/mysql/getting-started"
+
+	doc := model.ExtractedDocument{
+		PageURL:     pageURL,
+		Description: stringPtr("MySQL connector docs"),
+		PageHeading: stringPtr("Getting started"),
+	}
+
+	records, err := RecordEnricher{}.Enrich(doc)
+	if err != nil {
+		t.Fatalf("Enrich() err = %v", err)
+	}
+
+	if len(records) != 1 {
+		t.Fatalf("len(records) = %d, want 1", len(records))
+	}
+
+	assertRecord(t, records[0], recordExpectation{
+		url:      pageURL,
+		product:  "mysql",
+		typeName: model.RecordTypeLvl1,
+		content:  "MySQL connector docs",
+		lvl1:     stringPtr("Getting started"),
+		position: 0,
+		objectID: recordutil.ObjectIDFromURL(pageURL),
+	})
+}
+
+func TestRecordEnricherAddsProductForSupabaseConnectorDocURLs(t *testing.T) {
+	const pageURL = "https://www.algolia.com/doc/sending-and-managing-data/send-and-update-your-data/" +
+		"connectors/supabase/getting-started"
+
+	doc := model.ExtractedDocument{
+		PageURL:     pageURL,
+		Description: stringPtr("Supabase connector docs"),
+		PageHeading: stringPtr("Getting started"),
+	}
+
+	records, err := RecordEnricher{}.Enrich(doc)
+	if err != nil {
+		t.Fatalf("Enrich() err = %v", err)
+	}
+
+	if len(records) != 1 {
+		t.Fatalf("len(records) = %d, want 1", len(records))
+	}
+
+	assertRecord(t, records[0], recordExpectation{
+		url:      pageURL,
+		product:  "supabase",
+		typeName: model.RecordTypeLvl1,
+		content:  "Supabase connector docs",
+		lvl1:     stringPtr("Getting started"),
+		position: 0,
+		objectID: recordutil.ObjectIDFromURL(pageURL),
+	})
+}
+
+func TestRecordEnricherAddsProductForTealiumGuideDocURLs(t *testing.T) {
+	const pageURL = "https://www.algolia.com/doc/guides/sending-events/connectors/tealium/" +
+		"getting-started"
+
+	doc := model.ExtractedDocument{
+		PageURL:     pageURL,
+		Description: stringPtr("Tealium guide docs"),
+		PageHeading: stringPtr("Getting started"),
+	}
+
+	records, err := RecordEnricher{}.Enrich(doc)
+	if err != nil {
+		t.Fatalf("Enrich() err = %v", err)
+	}
+
+	if len(records) != 1 {
+		t.Fatalf("len(records) = %d, want 1", len(records))
+	}
+
+	assertRecord(t, records[0], recordExpectation{
+		url:         pageURL,
+		contentType: "guide",
+		product:     "tealium",
+		typeName:    model.RecordTypeLvl1,
+		content:     "Tealium guide docs",
+		lvl1:        stringPtr("Getting started"),
+		position:    0,
+		objectID:    recordutil.ObjectIDFromURL(pageURL),
+	})
+}
+
+func TestRecordEnricherAddsProductForSegmentGuideDocURLs(t *testing.T) {
+	const pageURL = "https://www.algolia.com/doc/guides/sending-events/connectors/segment/" +
+		"getting-started"
+
+	doc := model.ExtractedDocument{
+		PageURL:     pageURL,
+		Description: stringPtr("Segment guide docs"),
+		PageHeading: stringPtr("Getting started"),
+	}
+
+	records, err := RecordEnricher{}.Enrich(doc)
+	if err != nil {
+		t.Fatalf("Enrich() err = %v", err)
+	}
+
+	if len(records) != 1 {
+		t.Fatalf("len(records) = %d, want 1", len(records))
+	}
+
+	assertRecord(t, records[0], recordExpectation{
+		url:         pageURL,
+		contentType: "guide",
+		product:     "segment",
+		typeName:    model.RecordTypeLvl1,
+		content:     "Segment guide docs",
+		lvl1:        stringPtr("Getting started"),
+		position:    0,
+		objectID:    recordutil.ObjectIDFromURL(pageURL),
+	})
+}
+
+func TestRecordEnricherAddsProductForGoogleTagManagerGuideDocURLs(t *testing.T) {
+	const pageURL = "https://www.algolia.com/doc/guides/sending-events/connectors/" +
+		"google-tag-manager/getting-started"
+
+	doc := model.ExtractedDocument{
+		PageURL:     pageURL,
+		Description: stringPtr("Google Tag Manager guide docs"),
+		PageHeading: stringPtr("Getting started"),
+	}
+
+	records, err := RecordEnricher{}.Enrich(doc)
+	if err != nil {
+		t.Fatalf("Enrich() err = %v", err)
+	}
+
+	if len(records) != 1 {
+		t.Fatalf("len(records) = %d, want 1", len(records))
+	}
+
+	assertRecord(t, records[0], recordExpectation{
+		url:         pageURL,
+		contentType: "guide",
+		product:     "google-tag-manager",
+		typeName:    model.RecordTypeLvl1,
+		content:     "Google Tag Manager guide docs",
+		lvl1:        stringPtr("Getting started"),
+		position:    0,
+		objectID:    recordutil.ObjectIDFromURL(pageURL),
+	})
+}
+
+func TestRecordEnricherAddsProductForAgentStudioGuideDocURLs(t *testing.T) {
+	const pageURL = "https://www.algolia.com/doc/guides/algolia-ai/agent-studio/getting-started"
+
+	doc := model.ExtractedDocument{
+		PageURL:     pageURL,
+		Description: stringPtr("Agent Studio guide docs"),
+		PageHeading: stringPtr("Getting started"),
+	}
+
+	records, err := RecordEnricher{}.Enrich(doc)
+	if err != nil {
+		t.Fatalf("Enrich() err = %v", err)
+	}
+
+	if len(records) != 1 {
+		t.Fatalf("len(records) = %d, want 1", len(records))
+	}
+
+	assertRecord(t, records[0], recordExpectation{
+		url:         pageURL,
+		contentType: "guide",
+		product:     "agent-studio",
+		typeName:    model.RecordTypeLvl1,
+		content:     "Agent Studio guide docs",
+		lvl1:        stringPtr("Getting started"),
+		position:    0,
+		objectID:    recordutil.ObjectIDFromURL(pageURL),
+	})
+}
+
+func TestRecordEnricherAddsProductForAskAIGuideDocURLs(t *testing.T) {
+	const pageURL = "https://www.algolia.com/doc/guides/algolia-ai/askai/getting-started"
+
+	doc := model.ExtractedDocument{
+		PageURL:     pageURL,
+		Description: stringPtr("AskAI guide docs"),
+		PageHeading: stringPtr("Getting started"),
+	}
+
+	records, err := RecordEnricher{}.Enrich(doc)
+	if err != nil {
+		t.Fatalf("Enrich() err = %v", err)
+	}
+
+	if len(records) != 1 {
+		t.Fatalf("len(records) = %d, want 1", len(records))
+	}
+
+	assertRecord(t, records[0], recordExpectation{
+		url:         pageURL,
+		contentType: "guide",
+		product:     "askai",
+		typeName:    model.RecordTypeLvl1,
+		content:     "AskAI guide docs",
+		lvl1:        stringPtr("Getting started"),
+		position:    0,
+		objectID:    recordutil.ObjectIDFromURL(pageURL),
+	})
 }
 
 func TestRecordEnricherIndexesAPIFieldRecords(t *testing.T) {
@@ -384,6 +1048,7 @@ func TestRecordEnricherAddsIntegrationContentTypeForIntegrationDocURLs(t *testin
 	assertRecord(t, records[0], recordExpectation{
 		url:         "https://www.algolia.com/doc/integration/shopify/getting-started",
 		contentType: "integration",
+		product:     "shopify",
 		typeName:    model.RecordTypeLvl1,
 		content:     "Integration docs",
 		lvl1:        stringPtr("Getting started"),
@@ -426,6 +1091,7 @@ func TestRecordEnricherAddsSDKContentTypeForFrameworkIntegrationDocURLs(t *testi
 type recordExpectation struct {
 	url         string
 	contentType string
+	product     string
 	typeName    model.RecordType
 	content     string
 	methodName  string
@@ -442,6 +1108,7 @@ func assertRecord(t *testing.T, record model.Record, want recordExpectation) {
 
 	assertEqual(t, "URL", record.URL, want.url)
 	assertEqual(t, "ContentType", record.ContentType, want.contentType)
+	assertEqual(t, "Product", record.Product, want.product)
 
 	if record.RecordType != want.typeName {
 		t.Fatalf("RecordType = %q, want %q", record.RecordType, want.typeName)

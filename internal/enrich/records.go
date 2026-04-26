@@ -13,26 +13,8 @@ type RecordEnricher struct{}
 
 // Enrich builds index-ready records from one extracted page document.
 func (e RecordEnricher) Enrich(doc model.ExtractedDocument) ([]model.Record, error) {
-	pageURL := recordutil.URLWithoutAnchor(doc.PageURL)
-	breadcrumbSegments := recordutil.BreadcrumbSegmentsFromURL(pageURL)
-	breadcrumbHierarchy := recordutil.BreadcrumbHierarchyFromSegments(breadcrumbSegments)
-	contentType := contentTypeFromURL(pageURL)
-
-	pageRecord := model.Record{
-		URL:                 pageURL,
-		URLWithoutAnchor:    pageURL,
-		BreadcrumbSegments:  breadcrumbSegments,
-		BreadcrumbHierarchy: breadcrumbHierarchy,
-		ContentType:         contentType,
-		MethodName:          recordutil.MethodNameFromURL(pageURL),
-		RecordType:          model.RecordTypeLvl1,
-		Content:             cloneStringPtr(doc.Description),
-		Hierarchy: model.Hierarchy{
-			Lvl1: cloneStringPtr(doc.PageHeading),
-		},
-		Position: 0,
-		ObjectID: recordutil.ObjectIDFromURL(pageURL),
-	}
+	pageRecord := newPageRecord(doc)
+	pageURL := pageRecord.URL
 
 	records := []model.Record{pageRecord}
 	currentHierarchy := cloneHierarchy(pageRecord.Hierarchy)
@@ -72,6 +54,28 @@ func (e RecordEnricher) Enrich(doc model.ExtractedDocument) ([]model.Record, err
 	}
 
 	return records, nil
+}
+
+func newPageRecord(doc model.ExtractedDocument) model.Record {
+	pageURL := recordutil.URLWithoutAnchor(doc.PageURL)
+	breadcrumbSegments := recordutil.BreadcrumbSegmentsFromURL(pageURL)
+
+	return model.Record{
+		URL:                 pageURL,
+		URLWithoutAnchor:    pageURL,
+		BreadcrumbSegments:  breadcrumbSegments,
+		BreadcrumbHierarchy: recordutil.BreadcrumbHierarchyFromSegments(breadcrumbSegments),
+		ContentType:         contentTypeFromURL(pageURL),
+		Product:             productFromURL(pageURL),
+		MethodName:          recordutil.MethodNameFromURL(pageURL),
+		RecordType:          model.RecordTypeLvl1,
+		Content:             cloneStringPtr(doc.Description),
+		Hierarchy: model.Hierarchy{
+			Lvl1: cloneStringPtr(doc.PageHeading),
+		},
+		Position: 0,
+		ObjectID: recordutil.ObjectIDFromURL(pageURL),
+	}
 }
 
 func headingRecord(
@@ -243,4 +247,71 @@ func contentTypeFromURL(pageURL string) string {
 	default:
 		return ""
 	}
+}
+
+var productPathPrefixes = []struct {
+	prefix  string
+	product string
+}{
+	{prefix: "/ui-libraries/autocomplete", product: "autocomplete"},
+	{prefix: "/tools/crawler", product: "crawler"},
+	{prefix: "/tools/cli", product: "cli"},
+	{prefix: "/integration/shopify", product: "shopify"},
+	{prefix: "/integration/bigcommerce", product: "bigcommerce"},
+	{prefix: "/integration/commercetools", product: "commercetools"},
+	{prefix: "/integration/magento-2", product: "magento"},
+	{prefix: "/integration/salesforce-commerce-cloud-b2c", product: "sfcc"},
+	{prefix: "/integration/zendesk", product: "zendesk"},
+	{prefix: "/framework-integration/django", product: "django"},
+	{prefix: "/framework-integration/rails", product: "rails"},
+	{prefix: "/framework-integration/symfony", product: "symfony"},
+	{prefix: "/framework-integration/laravel", product: "laravel"},
+	{
+		prefix:  "/sending-and-managing-data/send-and-update-your-data/connectors/bigquery",
+		product: "bigquery",
+	},
+	{
+		prefix:  "/sending-and-managing-data/send-and-update-your-data/connectors/elasticsearch",
+		product: "elasticsearch",
+	},
+	{
+		prefix:  "/sending-and-managing-data/send-and-update-your-data/connectors/mysql",
+		product: "mysql",
+	},
+	{
+		prefix:  "/sending-and-managing-data/send-and-update-your-data/connectors/supabase",
+		product: "supabase",
+	},
+	{
+		prefix:  "/guides/sending-events/connectors/tealium",
+		product: "tealium",
+	},
+	{
+		prefix:  "/guides/sending-events/connectors/segment",
+		product: "segment",
+	},
+	{
+		prefix:  "/guides/sending-events/connectors/google-tag-manager",
+		product: "google-tag-manager",
+	},
+	{
+		prefix:  "/guides/algolia-ai/agent-studio",
+		product: "agent-studio",
+	},
+	{
+		prefix:  "/guides/algolia-ai/askai",
+		product: "askai",
+	},
+}
+
+func productFromURL(pageURL string) string {
+	path := recordutil.BreadcrumbPathFromURL(pageURL)
+
+	for _, mapping := range productPathPrefixes {
+		if strings.HasPrefix(path, mapping.prefix) {
+			return mapping.product
+		}
+	}
+
+	return ""
 }
