@@ -232,7 +232,13 @@ func contentTypeFromURL(pageURL string) string {
 		return "guide"
 	case strings.HasPrefix(path, "/rest-api"):
 		return "api"
+	case strings.HasPrefix(path, "/api-reference/api-parameters"):
+		return "api"
+	case strings.HasPrefix(path, "/integration"):
+		return "integration"
 	case strings.HasPrefix(path, "/libraries/sdk"):
+		return "sdk"
+	case strings.HasPrefix(path, "/framework-integration"):
 		return "sdk"
 	default:
 		return ""

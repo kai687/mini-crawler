@@ -336,6 +336,93 @@ func TestRecordEnricherAddsMethodNameForSDKMethodDocURLs(t *testing.T) {
 	})
 }
 
+func TestRecordEnricherAddsAPIContentTypeForAPIParameterDocURLs(t *testing.T) {
+	doc := model.ExtractedDocument{
+		PageURL:     "https://www.algolia.com/doc/api-reference/api-parameters/hitsPerPage",
+		Description: stringPtr("API parameter docs"),
+		PageHeading: stringPtr("hitsPerPage"),
+	}
+
+	records, err := RecordEnricher{}.Enrich(doc)
+	if err != nil {
+		t.Fatalf("Enrich() err = %v", err)
+	}
+
+	if len(records) != 1 {
+		t.Fatalf("len(records) = %d, want 1", len(records))
+	}
+
+	assertRecord(t, records[0], recordExpectation{
+		url:         "https://www.algolia.com/doc/api-reference/api-parameters/hitsPerPage",
+		contentType: "api",
+		typeName:    model.RecordTypeLvl1,
+		content:     "API parameter docs",
+		lvl1:        stringPtr("hitsPerPage"),
+		position:    0,
+		objectID: recordutil.ObjectIDFromURL(
+			"https://www.algolia.com/doc/api-reference/api-parameters/hitsPerPage",
+		),
+	})
+}
+
+func TestRecordEnricherAddsIntegrationContentTypeForIntegrationDocURLs(t *testing.T) {
+	doc := model.ExtractedDocument{
+		PageURL:     "https://www.algolia.com/doc/integration/shopify/getting-started",
+		Description: stringPtr("Integration docs"),
+		PageHeading: stringPtr("Getting started"),
+	}
+
+	records, err := RecordEnricher{}.Enrich(doc)
+	if err != nil {
+		t.Fatalf("Enrich() err = %v", err)
+	}
+
+	if len(records) != 1 {
+		t.Fatalf("len(records) = %d, want 1", len(records))
+	}
+
+	assertRecord(t, records[0], recordExpectation{
+		url:         "https://www.algolia.com/doc/integration/shopify/getting-started",
+		contentType: "integration",
+		typeName:    model.RecordTypeLvl1,
+		content:     "Integration docs",
+		lvl1:        stringPtr("Getting started"),
+		position:    0,
+		objectID: recordutil.ObjectIDFromURL(
+			"https://www.algolia.com/doc/integration/shopify/getting-started",
+		),
+	})
+}
+
+func TestRecordEnricherAddsSDKContentTypeForFrameworkIntegrationDocURLs(t *testing.T) {
+	doc := model.ExtractedDocument{
+		PageURL:     "https://www.algolia.com/doc/framework-integration/react/getting-started",
+		Description: stringPtr("Framework integration docs"),
+		PageHeading: stringPtr("Getting started"),
+	}
+
+	records, err := RecordEnricher{}.Enrich(doc)
+	if err != nil {
+		t.Fatalf("Enrich() err = %v", err)
+	}
+
+	if len(records) != 1 {
+		t.Fatalf("len(records) = %d, want 1", len(records))
+	}
+
+	assertRecord(t, records[0], recordExpectation{
+		url:         "https://www.algolia.com/doc/framework-integration/react/getting-started",
+		contentType: "sdk",
+		typeName:    model.RecordTypeLvl1,
+		content:     "Framework integration docs",
+		lvl1:        stringPtr("Getting started"),
+		position:    0,
+		objectID: recordutil.ObjectIDFromURL(
+			"https://www.algolia.com/doc/framework-integration/react/getting-started",
+		),
+	})
+}
+
 type recordExpectation struct {
 	url         string
 	contentType string
