@@ -41,7 +41,7 @@ depends = "build"
 run = '''
 algolia settings set docs_clean \
   --searchableAttributes "unordered(methodName),unordered(hierarchy.lvl0),unordered(hierarchy.lvl1),unordered(hierarchy.lvl2),unordered(hierarchy.lvl3),unordered(hierarchy.lvl4),unordered(hierarchy.lvl5),unordered(hierarchy.lvl6),unordered(content)" \
-  --attributesForFaceting "contentType,breadcrumbHierarchy.lvl0,breadcrumbHierarchy.lvl1,breadcrumbHierarchy.lvl2,filterOnly(variant)" \
+  --attributesForFaceting "afterDistinct(contentType),afterDistinct(breadcrumbHierarchy.lvl0),afterDistinct(breadcrumbHierarchy.lvl1),afterDistinct(breadcrumbHierarchy.lvl2),afterDistinct(filterOnly(variant))" \
   --customRanking "asc(position)" \
   --ranking "attribute,typo,words,filters,proximity,exact,custom" \
   --indexLanguages en \
