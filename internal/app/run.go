@@ -11,28 +11,20 @@ import (
 	"time"
 
 	"github.com/algolia/docs-crawler/internal/config"
-	"github.com/algolia/docs-crawler/internal/coverage"
-	"github.com/algolia/docs-crawler/internal/enrich"
-	"github.com/algolia/docs-crawler/internal/extract"
-	"github.com/algolia/docs-crawler/internal/fetch"
-	"github.com/algolia/docs-crawler/internal/model"
 	"github.com/algolia/docs-crawler/internal/output"
-	"github.com/algolia/docs-crawler/internal/parse"
+	starlarkengine "github.com/algolia/docs-crawler/internal/script/starlark"
 	"github.com/algolia/docs-crawler/internal/source"
 )
 
 type pageResult struct {
-	url               string
-	records           []model.Record
-	expectedHeadings  int
-	extractedHeadings int
-	err               error
+	url     string
+	records []any
+	err     error
 }
 
 type runState struct {
 	firstErr error
 	failed   int
-	tracker  coverage.Tracker
 }
 
 // Run executes one crawler session and writes extracted records to out.
@@ -56,7 +48,21 @@ func Run(ctx context.Context, cfg config.Config, out io.Writer) error {
 	writer := output.NewJSONLWriter(out)
 	defer writer.Close()
 
-	return runPages(ctx, cfg, httpClient, writer, urls, workers)
+	processor, err := newPageProcessor(cfg, httpClient)
+	if err != nil {
+		return err
+	}
+
+	return runPages(ctx, cfg, processor, writer, urls, workers)
+}
+
+func newPageProcessor(cfg config.Config, httpClient *http.Client) (pageProcessor, error) {
+	program, err := starlarkengine.Engine{}.Load(cfg.Script)
+	if err != nil {
+		return nil, fmt.Errorf("load script: %w", err)
+	}
+
+	return newScriptPageProcessor(httpClient, program), nil
 }
 
 func normalizedWorkers(cfg config.Config) int {
@@ -75,7 +81,7 @@ func normalizedWorkers(cfg config.Config) int {
 func runPages(
 	ctx context.Context,
 	cfg config.Config,
-	httpClient *http.Client,
+	processor pageProcessor,
 	writer *output.JSONLWriter,
 	urls []string,
 	workers int,
@@ -85,12 +91,14 @@ func runPages(
 
 	jobs := make(chan string)
 	results := make(chan pageResult)
-	startWorkers(ctx, httpClient, workers, jobs, results)
+	startWorkers(ctx, processor, workers, jobs, results)
 	sendJobs(ctx, urls, jobs)
+
+	failOnError := cfg.FailOnError || cfg.Mode == config.ModeSingle
 
 	state := runState{}
 	for result := range results {
-		if err := handlePageResult(writer, result, cfg.FailOnError, cancel, &state); err != nil {
+		if err := handlePageResult(writer, result, failOnError, cancel, &state); err != nil {
 			return err
 		}
 	}
@@ -103,16 +111,12 @@ func runPages(
 		fmt.Fprintf(os.Stderr, "crawl completed with %d failed URL(s)\n", state.failed)
 	}
 
-	if cfg.Coverage {
-		fmt.Fprintln(os.Stderr, state.tracker.Report().Format())
-	}
-
 	return nil
 }
 
 func startWorkers(
 	ctx context.Context,
-	httpClient *http.Client,
+	processor pageProcessor,
 	workers int,
 	jobs <-chan string,
 	results chan<- pageResult,
@@ -125,13 +129,11 @@ func startWorkers(
 			defer wg.Done()
 
 			for pageURL := range jobs {
-				records, expected, extracted, err := processPage(ctx, httpClient, pageURL)
+				records, err := processor.Process(ctx, pageURL)
 				results <- pageResult{
-					url:               pageURL,
-					records:           records,
-					expectedHeadings:  expected,
-					extractedHeadings: extracted,
-					err:               err,
+					url:     pageURL,
+					records: records,
+					err:     err,
 				}
 			}
 		}()
@@ -166,7 +168,6 @@ func handlePageResult(
 ) error {
 	if result.err != nil {
 		state.failed++
-		state.tracker.Add(0, 0, 0)
 
 		slog.Error("page failed", "url", result.url, "err", result.err)
 
@@ -178,8 +179,6 @@ func handlePageResult(
 
 		return nil
 	}
-
-	state.tracker.Add(len(result.records), result.expectedHeadings, result.extractedHeadings)
 
 	if state.firstErr != nil {
 		return nil
@@ -194,61 +193,6 @@ func handlePageResult(
 	}
 
 	return nil
-}
-
-func processPage(
-	ctx context.Context,
-	httpClient *http.Client,
-	pageURL string,
-) ([]model.Record, int, int, error) {
-	slog.Info("processing", "url", pageURL)
-
-	fetcher := fetch.HTTPFetcher{Client: httpClient}
-	parser := parse.HTMLParser{}
-	extractor := extract.PageExtractor{}
-	enricher := enrich.RecordEnricher{}
-
-	page, err := fetcher.Fetch(ctx, pageURL)
-	if err != nil {
-		return nil, 0, 0, fmt.Errorf("fetch %s: %w", pageURL, err)
-	}
-
-	parsed, err := parser.Parse(page)
-	if err != nil {
-		return nil, 0, 0, fmt.Errorf("parse %s: %w", pageURL, err)
-	}
-
-	expectedHeadings := extract.CountExpectedHeadings(parsed.Doc)
-
-	extracted, err := extractor.Extract(parsed)
-	if err != nil {
-		return nil, 0, 0, fmt.Errorf("extract %s: %w", pageURL, err)
-	}
-
-	records, err := enricher.Enrich(extracted)
-	if err != nil {
-		return nil, 0, 0, fmt.Errorf("enrich %s: %w", pageURL, err)
-	}
-
-	return records, expectedHeadings, countHeadingRecords(records), nil
-}
-
-func countHeadingRecords(records []model.Record) int {
-	count := 0
-
-	for _, record := range records {
-		switch record.RecordType {
-		case model.RecordTypeLvl2,
-			model.RecordTypeLvl3,
-			model.RecordTypeField,
-			model.RecordTypeLvl4,
-			model.RecordTypeLvl5,
-			model.RecordTypeLvl6:
-			count++
-		}
-	}
-
-	return count
 }
 
 func newSource(cfg config.Config, client *http.Client) (source.Source, error) {

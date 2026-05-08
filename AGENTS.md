@@ -28,9 +28,10 @@
   - list items: `li` after stripping links-only content
   - API fields: `div.param-head[id]`
 - Page metadata is also selector-based: title from `h1#page-title`, description from `meta[name='description']`.
-- `--workers` is ignored in `--mode single`; `internal/app.normalizedWorkers` always forces single-page crawls to 1 worker.
-- Default run is best-effort. Without `--fail-on-error`, bad pages are logged and crawl continues.
-- `--coverage` and `--verbose` write to stderr; JSONL records go to stdout unless `--output` is used.
+- `crawl single` ignores workers; `internal/app.normalizedWorkers` always forces single-page crawls to 1 worker.
+- Sitemap runs are best-effort by default. Without `--fail-on-error`, bad pages are logged and crawl continues.
+- Single URL runs fail if the page cannot be crawled.
+- `--verbose` writes to stderr; JSONL records go to stdout unless `--output` is used.
 - `output.JSONLWriter` buffers writes and flushes on close. Keep close/flush behavior intact if touching output paths.
 
 ## Record / Indexing Assumptions
@@ -57,4 +58,4 @@
 - `mise run indexing` and `mise run set-settings` are operational tasks, not normal verification:
   - they require local `algolia` CLI
   - `indexing` also requires interactive `gum confirm`
-  - `indexing` uses `./docs-crawler -workers 16 https://www.algolia.com/doc/sitemap.xml | algolia objects import docs_clean -F -`
+  - `indexing` uses `./docs-crawler crawl sitemap -workers 16 https://www.algolia.com/doc/sitemap.xml | algolia objects import docs_clean -F -`

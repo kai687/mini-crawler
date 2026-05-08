@@ -32,7 +32,7 @@ description = "Index algolia docs"
 depends = "build"
 run = '''
 gum confirm "Run indexing now?" &&
-./docs-crawler -workers 16 https://www.algolia.com/doc/sitemap.xml | algolia objects import docs_clean -F -
+./docs-crawler crawl sitemap -workers 16 https://www.algolia.com/doc/sitemap.xml | algolia objects import docs_clean -F -
 '''
 
 [tasks.set-settings]

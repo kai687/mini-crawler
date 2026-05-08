@@ -1,108 +1,59 @@
 package config
 
-import (
-	"errors"
-	"flag"
-	"testing"
-)
+import "testing"
 
-func TestFromFlagsSitemapModeDefault(t *testing.T) {
-	cfg, err := FromFlags([]string{"https://example.com/sitemap.xml"})
-	if err != nil {
-		t.Fatalf("FromFlags() err = %v", err)
+func TestValidateSitemapMode(t *testing.T) {
+	cfg := Config{
+		Mode:   ModeSitemap,
+		Target: "https://example.com/sitemap.xml",
+		Script: "site.star",
 	}
 
-	if cfg.Mode != ModeSitemap {
-		t.Fatalf("Mode = %q, want %q", cfg.Mode, ModeSitemap)
-	}
-
-	if cfg.Target != "https://example.com/sitemap.xml" {
-		t.Fatalf("Target = %q", cfg.Target)
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("Validate() err = %v", err)
 	}
 }
 
-func TestFromFlagsSitemapMode(t *testing.T) {
-	cfg, err := FromFlags([]string{"--mode", "sitemap", "https://example.com/sitemap.xml"})
-	if err != nil {
-		t.Fatalf("FromFlags() err = %v", err)
-	}
+func TestValidateSingleMode(t *testing.T) {
+	cfg := Config{Mode: ModeSingle, Target: "https://example.com/page", Script: "site.star"}
 
-	if cfg.Mode != ModeSitemap {
-		t.Fatalf("Mode = %q, want %q", cfg.Mode, ModeSitemap)
-	}
-
-	if cfg.Target != "https://example.com/sitemap.xml" {
-		t.Fatalf("Target = %q", cfg.Target)
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("Validate() err = %v", err)
 	}
 }
 
-func TestFromFlagsTooManyArgs(t *testing.T) {
-	_, err := FromFlags([]string{"https://example.com/one", "https://example.com/two"})
-	if err == nil || err.Error() != "too many arguments" {
-		t.Fatalf("err = %v, want too many arguments", err)
+func TestValidateMissingScript(t *testing.T) {
+	cfg := Config{Mode: ModeSingle, Target: "https://example.com/page"}
+
+	err := cfg.Validate()
+	if err == nil || err.Error() != "script flag required" {
+		t.Fatalf("err = %v, want missing script error", err)
 	}
 }
 
-func TestFromFlagsMissingTarget(t *testing.T) {
-	_, err := FromFlags(nil)
+func TestValidateMissingSitemapTarget(t *testing.T) {
+	cfg := Config{Mode: ModeSitemap, Script: "site.star"}
+
+	err := cfg.Validate()
 	if err == nil || err.Error() != "sitemap mode need sitemap URL argument" {
 		t.Fatalf("err = %v, want missing sitemap URL error", err)
 	}
 }
 
-func TestFromFlagsVerbose(t *testing.T) {
-	cfg, err := FromFlags([]string{"--mode", "single", "--verbose", "https://example.com/page"})
-	if err != nil {
-		t.Fatalf("FromFlags() err = %v", err)
-	}
+func TestValidateMissingSingleTarget(t *testing.T) {
+	cfg := Config{Mode: ModeSingle, Script: "site.star"}
 
-	if !cfg.Verbose {
-		t.Fatal("Verbose = false, want true")
+	err := cfg.Validate()
+	if err == nil || err.Error() != "single mode need URL argument" {
+		t.Fatalf("err = %v, want missing single URL error", err)
 	}
 }
 
-func TestFromFlagsWorkers(t *testing.T) {
-	cfg, err := FromFlags(
-		[]string{"--mode", "single", "--workers", "4", "https://example.com/page"},
-	)
-	if err != nil {
-		t.Fatalf("FromFlags() err = %v", err)
-	}
+func TestValidateUnknownMode(t *testing.T) {
+	cfg := Config{Mode: Mode("unknown"), Target: "https://example.com", Script: "site.star"}
 
-	if cfg.Workers != 4 {
-		t.Fatalf("Workers = %d, want 4", cfg.Workers)
-	}
-}
-
-func TestFromFlagsFailOnError(t *testing.T) {
-	cfg, err := FromFlags(
-		[]string{"--mode", "single", "--fail-on-error", "https://example.com/page"},
-	)
-	if err != nil {
-		t.Fatalf("FromFlags() err = %v", err)
-	}
-
-	if !cfg.FailOnError {
-		t.Fatal("FailOnError = false, want true")
-	}
-}
-
-func TestFromFlagsFilter(t *testing.T) {
-	cfg, err := FromFlags(
-		[]string{"--mode", "sitemap", "--filter", "doc/guides", "https://example.com/sitemap.xml"},
-	)
-	if err != nil {
-		t.Fatalf("FromFlags() err = %v", err)
-	}
-
-	if cfg.Filter != "doc/guides" {
-		t.Fatalf("Filter = %q, want %q", cfg.Filter, "doc/guides")
-	}
-}
-
-func TestFromFlagsHelp(t *testing.T) {
-	_, err := FromFlags([]string{"-help"})
-	if !errors.Is(err, flag.ErrHelp) {
-		t.Fatalf("err = %v, want flag.ErrHelp", err)
+	err := cfg.Validate()
+	if err == nil || err.Error() != `unknown mode "unknown"` {
+		t.Fatalf("err = %v, want unknown mode error", err)
 	}
 }

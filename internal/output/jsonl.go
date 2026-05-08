@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-
-	"github.com/algolia/docs-crawler/internal/model"
 )
 
 // JSONLWriter writes records as newline-delimited JSON objects.
@@ -20,7 +18,7 @@ func NewJSONLWriter(w io.Writer) *JSONLWriter {
 }
 
 // Write serializes one record as a single JSONL line.
-func (w *JSONLWriter) Write(record model.Record) error {
+func (w *JSONLWriter) Write(record any) error {
 	data, err := json.Marshal(record)
 	if err != nil {
 		return fmt.Errorf("marshal record: %w", err)
