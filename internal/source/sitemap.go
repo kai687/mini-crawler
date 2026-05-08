@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"strings"
 
 	"github.com/antchfx/xmlquery"
 )
@@ -13,7 +12,6 @@ import (
 // Sitemap loads page URLs from a sitemap XML document.
 type Sitemap struct {
 	SitemapURL string
-	Filter     string
 	Client     *http.Client
 }
 
@@ -53,10 +51,6 @@ func (s Sitemap) URLs(ctx context.Context) ([]string, error) {
 		resolved, err := resolveURL(base, raw)
 		if err != nil {
 			return nil, fmt.Errorf("resolve sitemap url %q: %w", raw, err)
-		}
-
-		if s.Filter != "" && !strings.Contains(resolved, s.Filter) {
-			continue
 		}
 
 		urls = append(urls, resolved)

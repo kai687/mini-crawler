@@ -49,29 +49,14 @@ func (p scriptPageProcessor) Process(ctx context.Context, pageURL string) ([]any
 	doc := scriptapi.NewDocument(parsed)
 	scriptCtx := scriptapi.Context{URL: pageURL}
 
-	meta, err := p.program.PageMeta(doc, scriptCtx)
+	records, err := p.program.Extract(doc, scriptCtx)
 	if err != nil {
-		return nil, fmt.Errorf("script page_meta %s: %w", pageURL, err)
-	}
-
-	scriptCtx.Metadata = map[string]any{"pageMeta": meta}
-
-	records, err := p.program.Records(doc, scriptCtx)
-	if err != nil {
-		return nil, fmt.Errorf("script records %s: %w", pageURL, err)
+		return nil, fmt.Errorf("script extract %s: %w", pageURL, err)
 	}
 
 	out := make([]any, 0, len(records))
-	for i, record := range records {
-		enrichCtx := scriptCtx
-		enrichCtx.Position = i
-
-		enriched, err := p.program.Enrich(record, enrichCtx)
-		if err != nil {
-			return nil, fmt.Errorf("script enrich %s record %d: %w", pageURL, i, err)
-		}
-
-		out = append(out, enriched)
+	for _, record := range records {
+		out = append(out, record)
 	}
 
 	return out, nil

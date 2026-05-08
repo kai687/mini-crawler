@@ -36,7 +36,7 @@ func TestRunSingleMode(t *testing.T) {
 
 	records := runToRecords(t, config.Config{
 		Mode:   config.ModeSingle,
-		Target: server.URL,
+		Target: server.URL + "/doc/guides/example",
 		Script: algoliaScriptPath(),
 	})
 
@@ -130,15 +130,10 @@ func TestRunSingleModeWithScript(t *testing.T) {
 	defer server.Close()
 
 	scriptPath := writeScript(t, `
-def page_meta(doc, ctx):
-    return {"title": text(doc.select_one("h1#page-title"))}
+def extract_page(pattern, doc, ctx):
+    return [{"url": ctx["url"], "title": text(doc.select_one("h1#page-title")), "pattern": pattern}]
 
-def records(doc, ctx):
-    return [{"url": ctx["url"], "title": ctx["metadata"]["pageMeta"]["title"]}]
-
-def enrich(record, ctx):
-    record["position"] = ctx["position"]
-    return record
+extract(".*", extract_page)
 `)
 
 	var out bytes.Buffer
@@ -152,7 +147,7 @@ def enrich(record, ctx):
 		t.Fatalf("Run() err = %v", err)
 	}
 
-	want := `{"position":0,"title":"Script title","url":"` + server.URL + `"}` + "\n"
+	want := `{"pattern":".*","title":"Script title","url":"` + server.URL + `"}` + "\n"
 	if out.String() != want {
 		t.Fatalf("output = %q, want %q", out.String(), want)
 	}
@@ -172,6 +167,53 @@ func TestNormalizedWorkersSitemapMode(t *testing.T) {
 	}
 }
 
+func TestRunSkipsPagesWithoutExtractor(t *testing.T) {
+	pageServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = w.Write([]byte(`<html><body><h1>Page</h1></body></html>`))
+	}))
+	defer pageServer.Close()
+
+	sitemapServer := httptest.NewServer(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/xml")
+			_, _ = w.Write([]byte(`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>` + pageServer.URL + `/doc/keep</loc></url>
+  <url><loc>` + pageServer.URL + `/other/skip</loc></url>
+</urlset>`))
+		}),
+	)
+	defer sitemapServer.Close()
+
+	scriptPath := writeScript(t, `
+def extract_docs(pattern, doc, ctx):
+    return [{"url": ctx["url"]}]
+
+extract("^/doc/", extract_docs)
+`)
+
+	var out bytes.Buffer
+
+	err := Run(context.Background(), config.Config{
+		Mode:        config.ModeSitemap,
+		Target:      sitemapServer.URL,
+		FailOnError: true,
+		Script:      scriptPath,
+	}, &out)
+	if err != nil {
+		t.Fatalf("Run() err = %v", err)
+	}
+
+	if !strings.Contains(out.String(), pageServer.URL+"/doc/keep") {
+		t.Fatalf("output = %q, want matching page record", out.String())
+	}
+
+	if strings.Contains(out.String(), pageServer.URL+"/other/skip") {
+		t.Fatalf("output = %q, want unmatched page skipped", out.String())
+	}
+}
+
 func TestRunKeepsGoingByDefault(t *testing.T) {
 	pageServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -184,7 +226,7 @@ func TestRunKeepsGoingByDefault(t *testing.T) {
 			w.Header().Set("Content-Type", "application/xml")
 			_, _ = w.Write([]byte(`<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>` + pageServer.URL + `</loc></url>
+  <url><loc>` + pageServer.URL + `/doc/guides/example</loc></url>
   <url><loc>http://127.0.0.1:1/bad</loc></url>
 </urlset>`))
 		}),
@@ -203,7 +245,7 @@ func TestRunKeepsGoingByDefault(t *testing.T) {
 		t.Fatalf("Run() err = %v", err)
 	}
 
-	if !strings.Contains(out.String(), pageServer.URL) {
+	if !strings.Contains(out.String(), pageServer.URL+"/doc/guides/example") {
 		t.Fatalf("output = %q, want good page record", out.String())
 	}
 }

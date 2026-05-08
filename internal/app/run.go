@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/algolia/docs-crawler/internal/config"
 	"github.com/algolia/docs-crawler/internal/output"
+	"github.com/algolia/docs-crawler/internal/script"
 	starlarkengine "github.com/algolia/docs-crawler/internal/script/starlark"
 	"github.com/algolia/docs-crawler/internal/source"
 )
@@ -167,6 +169,12 @@ func handlePageResult(
 	state *runState,
 ) error {
 	if result.err != nil {
+		if errors.Is(result.err, script.ErrNoExtractor) {
+			slog.Warn("page skipped: no extractor matches", "url", result.url)
+
+			return nil
+		}
+
 		state.failed++
 
 		slog.Error("page failed", "url", result.url, "err", result.err)
@@ -202,7 +210,6 @@ func newSource(cfg config.Config, client *http.Client) (source.Source, error) {
 	case config.ModeSitemap:
 		return source.Sitemap{
 			SitemapURL: cfg.Target,
-			Filter:     cfg.Filter,
 			Client:     client,
 		}, nil
 	default:

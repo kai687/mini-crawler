@@ -13,7 +13,7 @@
 - Crawl pipeline in `internal/app/run.go`: `source` -> `fetch` -> `parse` -> `extract` -> `enrich` -> `output`
 - URL discovery lives in `internal/source`:
   - `Single` returns one explicit URL
-  - `Sitemap` fetches XML sitemap, resolves `<loc>` values, then applies substring `--filter`
+  - `Sitemap` fetches XML sitemap and resolves `<loc>` values; Starlark extractor patterns decide what gets records
 - Record shaping is split on purpose:
   - DOM extraction rules in `internal/extract/page.go`
   - Algolia record/schema enrichment in `internal/enrich/records.go`

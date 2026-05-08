@@ -106,12 +106,16 @@ func pathBuiltin(
 		return nil, err
 	}
 
+	return starlarkgo.String(pathFromURL(value)), nil
+}
+
+func pathFromURL(value string) string {
 	parsed, err := url.Parse(value)
 	if err != nil {
-		return nil, err
+		return ""
 	}
 
-	return starlarkgo.String(parsed.Path), nil
+	return parsed.Path
 }
 
 func sha1Builtin(

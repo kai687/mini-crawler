@@ -5,9 +5,7 @@ type Engine interface {
 	Load(path string) (Program, error)
 }
 
-// Program extracts and enriches JSON-like records for one parsed page.
+// Program extracts JSON-like records for one parsed page.
 type Program interface {
-	PageMeta(doc Document, ctx Context) (map[string]any, error)
-	Records(doc Document, ctx Context) ([]map[string]any, error)
-	Enrich(record map[string]any, ctx Context) (map[string]any, error)
+	Extract(doc Document, ctx Context) ([]map[string]any, error)
 }

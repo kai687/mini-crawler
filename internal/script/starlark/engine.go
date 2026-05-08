@@ -20,20 +20,21 @@ type Engine struct {
 // Load reads, parses, and evaluates one Starlark script.
 func (e Engine) Load(path string) (script.Program, error) {
 	thread := e.newThread("load " + path)
+	extractors := []extractorRegistration{}
 
-	globals, err := starlarkgo.ExecFileOptions(
+	_, err := starlarkgo.ExecFileOptions(
 		&syntax.FileOptions{},
 		thread,
 		path,
 		nil,
-		predeclared(),
+		predeclaredWithExtract(&extractors),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("load starlark %s: %w", path, err)
 	}
 
 	program := &Program{
-		globals:           globals,
+		extractors:        extractors,
 		maxExecutionSteps: e.maxExecutionSteps(),
 	}
 	if err := program.validateExports(); err != nil {
@@ -56,4 +57,37 @@ func (e Engine) maxExecutionSteps() uint64 {
 	}
 
 	return e.MaxExecutionSteps
+}
+
+func predeclaredWithExtract(extractors *[]extractorRegistration) starlarkgo.StringDict {
+	values := predeclared()
+	values["extract"] = starlarkgo.NewBuiltin("extract", func(
+		_ *starlarkgo.Thread,
+		_ *starlarkgo.Builtin,
+		args starlarkgo.Tuple,
+		kwargs []starlarkgo.Tuple,
+	) (starlarkgo.Value, error) {
+		var (
+			pattern string
+			fn      starlarkgo.Callable
+		)
+
+		if err := starlarkgo.UnpackArgs(
+			"extract",
+			args,
+			kwargs,
+			"pattern",
+			&pattern,
+			"fn",
+			&fn,
+		); err != nil {
+			return nil, err
+		}
+
+		*extractors = append(*extractors, extractorRegistration{pattern: pattern, fn: fn})
+
+		return starlarkgo.None, nil
+	})
+
+	return values
 }

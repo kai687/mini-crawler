@@ -12,18 +12,12 @@ import (
 
 func TestEngineLoadsAndRunsProgram(t *testing.T) {
 	path := writeScript(t, `
-def page_meta(doc, ctx):
-    return {"title": "Doc", "url": doc.url}
-
-def records(doc, ctx):
+def extract_docs(pattern, doc, ctx):
     return [
-        {"url": ctx["url"], "position": ctx["position"], "tags": ["a", "b"]},
+        {"url": ctx["url"], "pattern": pattern, "tags": ["a", "b"]},
     ]
 
-def enrich(record, ctx):
-    record["objectID"] = "id-1"
-    record["metadata"] = ctx["metadata"]["source"]
-    return record
+extract("^/doc", extract_docs)
 `)
 
 	program, err := Engine{}.Load(path)
@@ -32,92 +26,28 @@ def enrich(record, ctx):
 	}
 
 	doc := script.NewDocument(model.ParsedPage{URL: "https://example.com/doc"})
-	ctx := script.Context{
-		URL:      "https://example.com/doc",
-		Position: 2,
-		Metadata: map[string]any{"source": "test"},
-	}
+	ctx := script.Context{URL: "https://example.com/doc"}
 
-	meta, err := program.PageMeta(doc, ctx)
+	records, err := program.Extract(doc, ctx)
 	if err != nil {
-		t.Fatalf("PageMeta() error = %v", err)
-	}
-
-	assertMapValue(t, meta, "title", "Doc")
-	assertMapValue(t, meta, "url", "https://example.com/doc")
-
-	records, err := program.Records(doc, ctx)
-	if err != nil {
-		t.Fatalf("Records() error = %v", err)
+		t.Fatalf("Extract() error = %v", err)
 	}
 
 	assertRecordCount(t, records, 1)
-	assertMapValue(t, records[0], "position", int64(2))
-
-	enriched, err := program.Enrich(records[0], ctx)
-	if err != nil {
-		t.Fatalf("Enrich() error = %v", err)
-	}
-
-	assertMapValue(t, enriched, "objectID", "id-1")
-	assertMapValue(t, enriched, "metadata", "test")
+	assertMapValue(t, records[0], "url", "https://example.com/doc")
+	assertMapValue(t, records[0], "pattern", "^/doc")
 }
 
-func TestProgramStopsAfterMaxExecutionSteps(t *testing.T) {
+func TestProgramUsesFirstMatchingExtractor(t *testing.T) {
 	path := writeScript(t, `
-def page_meta(doc, ctx):
-    for _ in range(1000000):
-        pass
-    return {}
+def extract_first(pattern, doc, ctx):
+    return [{"name": "first"}]
 
-def records(doc, ctx):
-    return []
+def extract_second(pattern, doc, ctx):
+    return [{"name": "second"}]
 
-def enrich(record, ctx):
-    return record
-`)
-
-	program, err := Engine{MaxExecutionSteps: 1_000}.Load(path)
-	if err != nil {
-		t.Fatalf("Load() error = %v", err)
-	}
-
-	_, err = program.PageMeta(script.Document{}, script.Context{})
-	if err == nil {
-		t.Fatal("PageMeta() error = nil")
-	}
-
-	if !strings.Contains(err.Error(), "too many steps") {
-		t.Fatalf("PageMeta() error = %q", err)
-	}
-}
-
-func TestEngineRejectsMissingExport(t *testing.T) {
-	path := writeScript(t, `
-def page_meta(doc, ctx):
-    return {}
-`)
-
-	_, err := Engine{}.Load(path)
-	if err == nil {
-		t.Fatal("Load() error = nil")
-	}
-
-	if !strings.Contains(err.Error(), "missing records") {
-		t.Fatalf("Load() error = %q", err)
-	}
-}
-
-func TestProgramRejectsInvalidReturnValue(t *testing.T) {
-	path := writeScript(t, `
-def page_meta(doc, ctx):
-    return {"title": len}
-
-def records(doc, ctx):
-    return []
-
-def enrich(record, ctx):
-    return record
+extract("^/doc", extract_first)
+extract("^/doc/rest-api", extract_second)
 `)
 
 	program, err := Engine{}.Load(path)
@@ -125,13 +55,118 @@ def enrich(record, ctx):
 		t.Fatalf("Load() error = %v", err)
 	}
 
-	_, err = program.PageMeta(script.Document{}, script.Context{})
+	records, err := program.Extract(
+		script.Document{},
+		script.Context{URL: "https://example.com/doc/rest-api/search"},
+	)
+	if err != nil {
+		t.Fatalf("Extract() error = %v", err)
+	}
+
+	assertMapValue(t, records[0], "name", "first")
+}
+
+func TestProgramStopsAfterMaxExecutionSteps(t *testing.T) {
+	path := writeScript(t, `
+def extract_docs(pattern, doc, ctx):
+    for _ in range(1000000):
+        pass
+    return []
+
+extract(".*", extract_docs)
+`)
+
+	program, err := Engine{MaxExecutionSteps: 1_000}.Load(path)
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+
+	_, err = program.Extract(script.Document{}, script.Context{URL: "https://example.com/doc"})
 	if err == nil {
-		t.Fatal("PageMeta() error = nil")
+		t.Fatal("Extract() error = nil")
+	}
+
+	if !strings.Contains(err.Error(), "too many steps") {
+		t.Fatalf("Extract() error = %q", err)
+	}
+}
+
+func TestEngineRejectsMissingExtractor(t *testing.T) {
+	path := writeScript(t, `
+VALUE = 1
+`)
+
+	_, err := Engine{}.Load(path)
+	if err == nil {
+		t.Fatal("Load() error = nil")
+	}
+
+	if !strings.Contains(err.Error(), "registered no extractors") {
+		t.Fatalf("Load() error = %q", err)
+	}
+}
+
+func TestEngineRejectsExtractorWithoutPrefix(t *testing.T) {
+	path := writeScript(t, `
+def docs(pattern, doc, ctx):
+    return []
+
+extract(".*", docs)
+`)
+
+	_, err := Engine{}.Load(path)
+	if err == nil {
+		t.Fatal("Load() error = nil")
+	}
+
+	if !strings.Contains(err.Error(), "must start with extract_") {
+		t.Fatalf("Load() error = %q", err)
+	}
+}
+
+func TestProgramErrorsWhenNoExtractorMatches(t *testing.T) {
+	path := writeScript(t, `
+def extract_docs(pattern, doc, ctx):
+    return []
+
+extract("^/doc", extract_docs)
+`)
+
+	program, err := Engine{}.Load(path)
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+
+	_, err = program.Extract(script.Document{}, script.Context{URL: "https://example.com/blog"})
+	if err == nil {
+		t.Fatal("Extract() error = nil")
+	}
+
+	if !strings.Contains(err.Error(), "no extractor matches") {
+		t.Fatalf("Extract() error = %q", err)
+	}
+}
+
+func TestProgramRejectsInvalidReturnValue(t *testing.T) {
+	path := writeScript(t, `
+def extract_docs(pattern, doc, ctx):
+    return [{"title": len}]
+
+extract(".*", extract_docs)
+`)
+
+	program, err := Engine{}.Load(path)
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+
+	_, err = program.Extract(script.Document{}, script.Context{URL: "https://example.com/doc"})
+	if err == nil {
+		t.Fatal("Extract() error = nil")
 	}
 
 	if !strings.Contains(err.Error(), "unsupported starlark value builtin_function_or_method") {
-		t.Fatalf("PageMeta() error = %q", err)
+		t.Fatalf("Extract() error = %q", err)
 	}
 }
 

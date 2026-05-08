@@ -11,18 +11,15 @@ import (
 
 func TestProgramCanInspectDOM(t *testing.T) {
 	path := writeScript(t, `
-def page_meta(doc, ctx):
+def extract_docs(pattern, doc, ctx):
     title = doc.select_one("h1#page-title")
     description = doc.select_one("meta[name=description]")
-    return {
+    root = doc.select_one("#content")
+    out = [{
         "url": doc.url,
         "title": text(title),
         "description": attr(description, "content"),
-    }
-
-def records(doc, ctx):
-    root = doc.select_one("#content")
-    out = []
+    }]
     for node in root.select("h2[id], span[data-as=p]"):
         out.append({
             "tag": node_name(node),
@@ -31,8 +28,7 @@ def records(doc, ctx):
         })
     return out
 
-def enrich(record, ctx):
-    return record
+extract("^/doc", extract_docs)
 `)
 
 	program, err := Engine{}.Load(path)
@@ -52,43 +48,33 @@ def enrich(record, ctx):
   </body>
 </html>`)
 
-	meta, err := program.PageMeta(doc, script.Context{})
+	records, err := program.Extract(doc, script.Context{URL: "https://example.com/doc"})
 	if err != nil {
-		t.Fatalf("PageMeta() error = %v", err)
+		t.Fatalf("Extract() error = %v", err)
 	}
 
-	assertMapValue(t, meta, "url", "https://example.com/doc")
-	assertMapValue(t, meta, "title", "Title")
-	assertMapValue(t, meta, "description", "Description")
-
-	records, err := program.Records(doc, script.Context{})
-	if err != nil {
-		t.Fatalf("Records() error = %v", err)
-	}
-
-	assertRecordCount(t, records, 2)
-	assertMapValue(t, records[0], "tag", "h2")
-	assertMapValue(t, records[0], "anchor", "intro")
-	assertMapValue(t, records[1], "text", "First paragraph")
+	assertRecordCount(t, records, 3)
+	assertMapValue(t, records[0], "url", "https://example.com/doc")
+	assertMapValue(t, records[0], "title", "Title")
+	assertMapValue(t, records[0], "description", "Description")
+	assertMapValue(t, records[1], "tag", "h2")
+	assertMapValue(t, records[1], "anchor", "intro")
+	assertMapValue(t, records[2], "text", "First paragraph")
 }
 
 func TestProgramCanUseDOMTraversalHelpers(t *testing.T) {
 	path := writeScript(t, `
-def page_meta(doc, ctx):
+def extract_docs(pattern, doc, ctx):
     item = doc.select_one("li")
     header = doc.select_one(".param-head")
     next_block = header.next("div.mt-4")
-    return {
+    return [{
         "has_parent": has_parent(doc.select_one("span"), "li"),
         "without_links": collapse_space(clone_without_text(item, "a")),
         "next_text": collapse_space(text(next_block.select_one("p"))),
-    }
+    }]
 
-def records(doc, ctx):
-    return []
-
-def enrich(record, ctx):
-    return record
+extract("^/doc", extract_docs)
 `)
 
 	program, err := Engine{}.Load(path)
@@ -103,26 +89,22 @@ def enrich(record, ctx):
   <div class="mt-4"><p>Description text</p></div>
 </body></html>`)
 
-	meta, err := program.PageMeta(doc, script.Context{})
+	records, err := program.Extract(doc, script.Context{URL: "https://example.com/doc"})
 	if err != nil {
-		t.Fatalf("PageMeta() error = %v", err)
+		t.Fatalf("Extract() error = %v", err)
 	}
 
-	assertMapValue(t, meta, "has_parent", true)
-	assertMapValue(t, meta, "without_links", "Keep me Child")
-	assertMapValue(t, meta, "next_text", "Description text")
+	assertMapValue(t, records[0], "has_parent", true)
+	assertMapValue(t, records[0], "without_links", "Keep me Child")
+	assertMapValue(t, records[0], "next_text", "Description text")
 }
 
 func TestDOMHelpersRejectNonNode(t *testing.T) {
 	path := writeScript(t, `
-def page_meta(doc, ctx):
-    return {"bad": text("not-node")}
+def extract_docs(pattern, doc, ctx):
+    return [{"bad": text("not-node")}]
 
-def records(doc, ctx):
-    return []
-
-def enrich(record, ctx):
-    return record
+extract(".*", extract_docs)
 `)
 
 	program, err := Engine{}.Load(path)
@@ -130,13 +112,13 @@ def enrich(record, ctx):
 		t.Fatalf("Load() error = %v", err)
 	}
 
-	_, err = program.PageMeta(script.Document{}, script.Context{})
+	_, err = program.Extract(script.Document{}, script.Context{URL: "https://example.com/doc"})
 	if err == nil {
-		t.Fatal("PageMeta() error = nil")
+		t.Fatal("Extract() error = nil")
 	}
 
 	if !strings.Contains(err.Error(), "text: want node, got string") {
-		t.Fatalf("PageMeta() error = %q", err)
+		t.Fatalf("Extract() error = %q", err)
 	}
 }
 

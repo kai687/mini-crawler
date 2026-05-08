@@ -22,7 +22,6 @@ type Config struct {
 	Verbose     bool
 	Workers     int
 	FailOnError bool
-	Filter      string
 	Output      string
 	Script      string
 }

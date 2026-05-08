@@ -39,34 +39,6 @@ func TestSitemapURLs(t *testing.T) {
 	}
 }
 
-func TestSitemapURLsWithFilter(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/xml")
-		_, _ = w.Write([]byte(`<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://example.org/doc/guides/intro</loc></url>
-  <url><loc>https://example.org/doc/api/reference</loc></url>
-</urlset>`))
-	}))
-	defer server.Close()
-
-	s := Sitemap{
-		SitemapURL: server.URL + "/sitemap.xml",
-		Filter:     "doc/guides",
-		Client:     server.Client(),
-	}
-
-	urls, err := s.URLs(context.Background())
-	if err != nil {
-		t.Fatalf("URLs() err = %v", err)
-	}
-
-	want := []string{"https://example.org/doc/guides/intro"}
-	if !reflect.DeepEqual(urls, want) {
-		t.Fatalf("URLs() = %#v, want %#v", urls, want)
-	}
-}
-
 func TestResolveURL(t *testing.T) {
 	base := mustParseURL(t, "https://example.com/sitemap.xml")
 

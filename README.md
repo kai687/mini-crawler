@@ -44,7 +44,6 @@ Common `crawl` flags:
 `sitemap` flags:
 
 - `--workers`: number of concurrent page workers. Default: `1`
-- `--filter`: substring filter applied to sitemap URLs before crawling
 - `--fail-on-error`: stop run if one URL fails
 
 ## Examples
@@ -67,16 +66,6 @@ go run . crawl sitemap \
   https://algolia.com/sitemap.xml
 ```
 
-Only crawl sitemap URLs containing `/rest-api/`:
-
-```bash
-go run . crawl sitemap \
-  --script examples/algolia.star \
-  --filter /rest-api/ \
-  --output records.jsonl \
-  https://algolia.com/sitemap.xml
-```
-
 Fail fast on first page error:
 
 ```bash
@@ -89,22 +78,26 @@ go run . crawl sitemap \
 
 ## Starlark script contract
 
-Scripts must export three functions:
+Scripts register extractor functions with the `extract(pattern, fn)` DSL:
 
 ```python
-def page_meta(doc, ctx):
-    return {}
+def extract_guides(pattern, doc, ctx):
+    return [{"url": ctx["url"], "title": text(doc.select_one("h1"))}]
 
 
-def records(doc, ctx):
-    return []
-
-
-def enrich(record, ctx):
-    return record
+extract("^/doc/guides/", extract_guides)
 ```
 
-Return values must be JSON-like:
+Extractor rules:
+
+- function name must start with `extract_`
+- function signature is `fn(pattern, doc, ctx)`
+- `pattern` is a regular expression matched against the URL path
+- registration order matters; first matching extractor wins
+- extractor returns a list of JSON-like records
+- if no extractor matches, the page is skipped with a warning
+
+Record values must be JSON-like:
 
 - `None`
 - booleans
@@ -112,14 +105,6 @@ Return values must be JSON-like:
 - finite numbers
 - lists
 - dicts with string keys
-
-Crawler calls functions in this order per page:
-
-1. `page_meta(doc, ctx)`
-1. `records(doc, ctx)` with `ctx["metadata"]["pageMeta"]` set to page meta
-1. `enrich(record, ctx)` for each record returned by `records`
-
-`ctx["position"]` in `enrich` is the zero-based index of the record returned by `records`.
 
 ### `doc`
 
@@ -131,6 +116,14 @@ Crawler calls functions in this order per page:
 - `node.select(css)` -> list of descendant nodes
 - `node.select_one(css)` -> descendant node or `None`
 - `node.next(css)` -> next sibling matching CSS or `None`
+
+### `ctx`
+
+`ctx` exposes page context:
+
+- `ctx["url"]`: current page URL
+- `ctx["position"]`: zero unless your code sets it elsewhere
+- `ctx["metadata"]`: optional host metadata; empty by default
 
 ### Host helpers
 
@@ -161,7 +154,7 @@ Other helpers:
 
 ## Output
 
-Output is newline-delimited JSON (`.jsonl`). Each line is one script-produced record after `enrich`.
+Output is newline-delimited JSON (`.jsonl`). Each line is one script-produced record returned by the matching extractor.
 
 The crawler does not enforce a record schema beyond JSON-like values. Your script owns fields such as `url`, `objectID`, `recordType`, `hierarchy`, and `content`.
 
@@ -240,7 +233,7 @@ Verbose logs go to stderr. JSONL records go to stdout unless `--output` is set.
 - `internal/script`: language-neutral script interfaces and JSON validation
 - `internal/script/starlark`: Starlark engine and host API
 - `internal/output`: JSONL writer
-- `examples/algolia.star`: Algolia docs extraction/enrichment script
+- `examples/algolia.star`: Algolia docs extractor DSL script
 
 ## Test
 
