@@ -131,7 +131,7 @@ func TestRunSingleModeWithScript(t *testing.T) {
 
 	scriptPath := writeScript(t, `
 def extract_page(pattern, doc, ctx):
-    return [{"url": ctx["url"], "title": text(doc.select_one("h1#page-title")), "pattern": pattern}]
+    return [{"url": ctx["url"], "title": text(doc.select_first("h1#page-title")), "pattern": pattern}]
 
 extract(".*", extract_page)
 `)

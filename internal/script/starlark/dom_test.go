@@ -12,9 +12,9 @@ import (
 func TestProgramCanInspectDOM(t *testing.T) {
 	path := writeScript(t, `
 def extract_docs(pattern, doc, ctx):
-    title = doc.select_one("h1#page-title")
-    description = doc.select_one("meta[name=description]")
-    root = doc.select_one("#content")
+    title = doc.select_first("h1#page-title")
+    description = doc.select_first("meta[name=description]")
+    root = doc.select_first("#content")
     out = [{
         "url": doc.url,
         "title": text(title),
@@ -65,13 +65,13 @@ extract("^/doc", extract_docs)
 func TestProgramCanUseDOMTraversalHelpers(t *testing.T) {
 	path := writeScript(t, `
 def extract_docs(pattern, doc, ctx):
-    item = doc.select_one("li")
-    header = doc.select_one(".param-head")
+    item = doc.select_first("li")
+    header = doc.select_first(".param-head")
     next_block = header.next("div.mt-4")
     return [{
-        "has_parent": has_parent(doc.select_one("span"), "li"),
+        "has_parent": has_parent(doc.select_first("span"), "li"),
         "without_links": collapse_space(clone_without_text(item, "a")),
-        "next_text": collapse_space(text(next_block.select_one("p"))),
+        "next_text": collapse_space(text(next_block.select_first("p"))),
     }]
 
 extract("^/doc", extract_docs)

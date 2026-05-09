@@ -82,7 +82,7 @@ Scripts register extractor functions with the `extract(pattern, fn)` DSL:
 
 ```python
 def extract_guides(pattern, doc, ctx):
-    return [{"url": ctx["url"], "title": text(doc.select_one("h1"))}]
+    return [{"url": ctx["url"], "title": text(doc.select_first("h1"))}]
 
 
 extract("^/doc/guides/", extract_guides)
@@ -112,9 +112,9 @@ Record values must be JSON-like:
 
 - `doc.url`
 - `doc.select(css)` -> list of nodes
-- `doc.select_one(css)` -> node or `None`
+- `doc.select_first(css)` -> node or `None`
 - `node.select(css)` -> list of descendant nodes
-- `node.select_one(css)` -> descendant node or `None`
+- `node.select_first(css)` -> descendant node or `None`
 - `node.next(css)` -> next sibling matching CSS or `None`
 
 ### `ctx`

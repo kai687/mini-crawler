@@ -7,8 +7,6 @@ PARAM_FIELD_SELECTOR = "div.param-head[id]"
 PROSE_SELECTOR = "span[data-as=p], li"
 CONTENT_SELECTOR = HEADING_SELECTOR + ", " + PROSE_SELECTOR + ", " + PARAM_FIELD_SELECTOR
 CONTENT_ROOT_SELECTORS = ["#content", "#content-area"]
-TITLE_SELECTOR = "h1#page-title"
-DESCRIPTION_SELECTOR = "meta[name=description]"
 
 # Slug -> display-name exceptions used when building breadcrumb labels.
 SPECIAL_BREADCRUMB_CASING = {
@@ -112,6 +110,7 @@ def extract_docs(pattern, doc, ctx):
     page = docs_page_record(doc, ctx, {})
     return [page] + content_records(doc, ctx, page, CONTENT_ROOT_SELECTORS, CONTENT_SELECTOR)
 
+# Register extractor functions. Order matters
 extract("^/doc/rest-api/", extract_rest_api)
 extract("^/doc/api-reference/api-parameters/", extract_api_parameters)
 extract("^/doc/libraries/sdk/", extract_sdk)
@@ -124,8 +123,8 @@ extract("^/doc/", extract_docs)
 # Page-level metadata from stable docs selectors.
 def docs_page_record(doc, ctx, attrs):
     meta = {
-        "title": node_text(doc.select_one(TITLE_SELECTOR)),
-        "description": node_attr(doc.select_one(DESCRIPTION_SELECTOR), "content"),
+        "title": node_text(doc.select_first("h1#page-title")),
+        "description": node_attr(doc.select_first("meta[name=description]"), "content"),
     }
     return page_record(ctx["url"], meta, attrs)
 
@@ -179,7 +178,7 @@ def content_records(doc, ctx, page, root_selectors, content_selector):
 # New and older docs layouts use different content container IDs.
 def content_root(doc, root_selectors):
     for selector in root_selectors:
-        root = doc.select_one(selector)
+        root = doc.select_first(selector)
         if root != None:
             return root
     return None
@@ -266,7 +265,7 @@ def field_record(page, current_hierarchy, page_url, node, position):
     anchor = node_attr(node, "id")
     if anchor == "":
         return None
-    name = node_text(node.select_one("[data-component-part=field-name]"))
+    name = node_text(node.select_first("[data-component-part=field-name]"))
     if name == "":
         return None
     hierarchy = clone_hierarchy(current_hierarchy)
@@ -288,17 +287,17 @@ def field_record(page, current_hierarchy, page_url, node, position):
 # Build concise field summary from type/required pills and first prose line.
 def field_description(node):
     parts = []
-    pill = node_text(node.select_one("[data-component-part=field-info-pill]"))
+    pill = node_text(node.select_first("[data-component-part=field-info-pill]"))
     if pill != "":
         parts.append(pill)
-    required = node_text(node.select_one("[data-component-part=field-required-pill]"))
+    required = node_text(node.select_first("[data-component-part=field-required-pill]"))
     if required != "":
         parts.append("required")
     desc_block = node.next("div.mt-4")
     if desc_block != None:
-        prose = desc_block.select_one("div")
+        prose = desc_block.select_first("div")
         if prose != None:
-            first_p = prose.select_one("p")
+            first_p = prose.select_first("p")
             text_value = node_text(first_p)
             if text_value != "":
                 parts.append(text_value)

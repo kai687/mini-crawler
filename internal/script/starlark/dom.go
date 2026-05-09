@@ -28,7 +28,7 @@ func (v documentValue) Hash() (uint32, error) {
 }
 
 func (v documentValue) AttrNames() []string {
-	return []string{"select", "select_one", "url"}
+	return []string{"select", "select_first", "url"}
 }
 
 func (v documentValue) Attr(name string) (starlarkgo.Value, error) {
@@ -37,8 +37,8 @@ func (v documentValue) Attr(name string) (starlarkgo.Value, error) {
 		return starlarkgo.String(v.doc.URL()), nil
 	case "select":
 		return starlarkgo.NewBuiltin("document.select", v.selectNodes), nil
-	case "select_one":
-		return starlarkgo.NewBuiltin("document.select_one", v.selectOne), nil
+	case "select_first":
+		return starlarkgo.NewBuiltin("document.select_first", v.selectFirst), nil
 	default:
 		return nil, nil
 	}
@@ -58,14 +58,14 @@ func (v documentValue) selectNodes(
 	return nodesFromSelection(v.doc.GoqueryDocument().Find(css)), nil
 }
 
-func (v documentValue) selectOne(
+func (v documentValue) selectFirst(
 	_ *starlarkgo.Thread,
 	_ *starlarkgo.Builtin,
 	args starlarkgo.Tuple,
 	kwargs []starlarkgo.Tuple,
 ) (starlarkgo.Value, error) {
 	var css string
-	if err := starlarkgo.UnpackArgs("select_one", args, kwargs, "css", &css); err != nil {
+	if err := starlarkgo.UnpackArgs("select_first", args, kwargs, "css", &css); err != nil {
 		return nil, err
 	}
 
@@ -92,7 +92,7 @@ func (v nodeValue) Hash() (uint32, error) {
 }
 
 func (v nodeValue) AttrNames() []string {
-	return []string{"next", "select", "select_one"}
+	return []string{"next", "select", "select_first"}
 }
 
 func (v nodeValue) Attr(name string) (starlarkgo.Value, error) {
@@ -101,8 +101,8 @@ func (v nodeValue) Attr(name string) (starlarkgo.Value, error) {
 		return starlarkgo.NewBuiltin("node.next", v.next), nil
 	case "select":
 		return starlarkgo.NewBuiltin("node.select", v.selectNodes), nil
-	case "select_one":
-		return starlarkgo.NewBuiltin("node.select_one", v.selectOne), nil
+	case "select_first":
+		return starlarkgo.NewBuiltin("node.select_first", v.selectFirst), nil
 	default:
 		return nil, nil
 	}
@@ -136,14 +136,14 @@ func (v nodeValue) selectNodes(
 	return nodesFromSelection(v.selection.Find(css)), nil
 }
 
-func (v nodeValue) selectOne(
+func (v nodeValue) selectFirst(
 	_ *starlarkgo.Thread,
 	_ *starlarkgo.Builtin,
 	args starlarkgo.Tuple,
 	kwargs []starlarkgo.Tuple,
 ) (starlarkgo.Value, error) {
 	var css string
-	if err := starlarkgo.UnpackArgs("select_one", args, kwargs, "css", &css); err != nil {
+	if err := starlarkgo.UnpackArgs("select_first", args, kwargs, "css", &css); err != nil {
 		return nil, err
 	}
 
