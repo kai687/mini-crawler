@@ -47,11 +47,11 @@ func (r *terminalReporter) Start(snapshot crawler.MetricsSnapshot) {
 		progressbar.OptionSetRenderBlankState(true),
 		progressbar.OptionThrottle(100*time.Millisecond),
 		progressbar.OptionSetTheme(progressbar.Theme{
-			Saucer:        "█",
-			SaucerHead:    "█",
-			SaucerPadding: "░",
-			BarStart:      "[",
-			BarEnd:        "]",
+			Saucer:        "[green]█[reset]",
+			SaucerHead:    "[green]█[reset]",
+			SaucerPadding: "[green]░[reset]",
+			BarStart:      "",
+			BarEnd:        "",
 		}),
 	)
 	r.render(snapshot)
