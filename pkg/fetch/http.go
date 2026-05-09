@@ -6,7 +6,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/algolia/docs-crawler/pkg/model"
+	"github.com/algolia/mini-crawler/pkg/model"
 )
 
 // HTTPFetcher retrieves pages with an http.Client.

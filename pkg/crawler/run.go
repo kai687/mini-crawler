@@ -7,8 +7,9 @@ import (
 	"log/slog"
 	"os"
 	"sync"
+	"time"
 
-	"github.com/algolia/docs-crawler/pkg/script"
+	"github.com/algolia/mini-crawler/pkg/script"
 )
 
 // Pipeline configures one crawl run from discovery through output.
@@ -19,8 +20,10 @@ type Pipeline struct {
 	Extractor Extractor
 	Writer    Writer
 
-	Workers     int
-	FailOnError bool
+	Workers         int
+	FailOnError     bool
+	RequestRate     float64
+	MetricsInterval time.Duration
 }
 
 // Run executes one crawl pipeline.
@@ -46,17 +49,29 @@ func Run(ctx context.Context, p Pipeline) error {
 	}
 	defer p.Writer.Close()
 
+	if p.RequestRate < 0 {
+		return errors.New("request rate must be >= 0")
+	}
+
 	urls, err := p.Source.URLs(ctx)
 	if err != nil {
 		return fmt.Errorf("load urls: %w", err)
 	}
 
 	workers := normalizedWorkers(p.Workers)
-	slog.Info("crawl start", "urls", len(urls), "workers", workers)
+	slog.Info("crawl start", "urls", len(urls), "workers", workers, "request_rate", p.RequestRate)
 
-	processor := newPipelineProcessor(p.Fetcher, p.Parser, p.Extractor)
+	metrics := newCrawlMetrics()
 
-	return runPages(ctx, p, processor, urls, workers)
+	limiter := newRequestLimiter(p.RequestRate)
+	defer limiter.stop()
+
+	processor := newPipelineProcessor(p.Fetcher, p.Parser, p.Extractor, limiter, metrics)
+
+	err = runPages(ctx, p, processor, urls, workers, metrics)
+	metrics.log("crawl metrics final")
+
+	return err
 }
 
 // normalizedWorkers keeps worker count valid for the fan-out loop.
@@ -71,9 +86,15 @@ func runPages(
 	processor PageProcessor,
 	urls []string,
 	workers int,
+	metrics *crawlMetrics,
 ) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
+
+	metricsDone := make(chan struct{})
+	defer close(metricsDone)
+
+	startMetricsLogger(metricsDone, metrics, p.MetricsInterval)
 
 	jobs := make(chan string)
 	results := make(chan pageResult)
@@ -82,7 +103,14 @@ func runPages(
 
 	state := runState{}
 	for result := range results {
-		if err := handlePageResult(p.Writer, result, p.FailOnError, cancel, &state); err != nil {
+		if err := handlePageResult(
+			p.Writer,
+			result,
+			p.FailOnError,
+			cancel,
+			&state,
+			metrics,
+		); err != nil {
 			return err
 		}
 	}
@@ -157,6 +185,7 @@ func handlePageResult(
 	failOnError bool,
 	cancel context.CancelFunc,
 	state *runState,
+	metrics *crawlMetrics,
 ) error {
 	if result.err != nil {
 		if errors.Is(result.err, script.ErrNoExtractor) {
@@ -182,13 +211,19 @@ func handlePageResult(
 		return nil
 	}
 
+	written := 0
+
 	for _, record := range result.records {
 		if err := writer.Write(record); err != nil {
 			cancel()
 
 			return fmt.Errorf("write record for %s: %w", result.url, err)
 		}
+
+		written++
 	}
+
+	metrics.addRecords(written)
 
 	return nil
 }

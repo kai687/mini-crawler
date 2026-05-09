@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/algolia/docs-crawler/pkg/model"
+	"github.com/algolia/mini-crawler/pkg/model"
 )
 
 // Source discovers crawl targets. A target can be a URL, file path, object key,
@@ -44,16 +44,36 @@ type pipelineProcessor struct {
 	fetcher   Fetcher
 	parser    Parser
 	extractor Extractor
+	limiter   *requestLimiter
+	metrics   *crawlMetrics
 }
 
-func newPipelineProcessor(fetcher Fetcher, parser Parser, extractor Extractor) pipelineProcessor {
-	return pipelineProcessor{fetcher: fetcher, parser: parser, extractor: extractor}
+func newPipelineProcessor(
+	fetcher Fetcher,
+	parser Parser,
+	extractor Extractor,
+	limiter *requestLimiter,
+	metrics *crawlMetrics,
+) pipelineProcessor {
+	return pipelineProcessor{
+		fetcher:   fetcher,
+		parser:    parser,
+		extractor: extractor,
+		limiter:   limiter,
+		metrics:   metrics,
+	}
 }
 
 func (p pipelineProcessor) Process(ctx context.Context, ref string) ([]any, error) {
 	slog.Info("processing", "ref", ref)
 
+	if err := p.limiter.wait(ctx); err != nil {
+		return nil, fmt.Errorf("wait for request slot: %w", err)
+	}
+
 	page, err := p.fetcher.Fetch(ctx, ref)
+	p.metrics.addRequest()
+
 	if err != nil {
 		return nil, fmt.Errorf("fetch %s: %w", ref, err)
 	}
@@ -67,6 +87,8 @@ func (p pipelineProcessor) Process(ctx context.Context, ref string) ([]any, erro
 	if err != nil {
 		return nil, fmt.Errorf("extract %s: %w", ref, err)
 	}
+
+	p.metrics.addPage()
 
 	return records, nil
 }

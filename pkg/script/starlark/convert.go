@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/algolia/docs-crawler/pkg/script"
+	"github.com/algolia/mini-crawler/pkg/script"
 	starlarkgo "go.starlark.net/starlark"
 )
 

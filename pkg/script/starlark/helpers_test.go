@@ -3,7 +3,7 @@ package starlark
 import (
 	"testing"
 
-	"github.com/algolia/docs-crawler/pkg/script"
+	"github.com/algolia/mini-crawler/pkg/script"
 )
 
 func TestProgramCanUseHostHelpers(t *testing.T) {

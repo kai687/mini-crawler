@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 
-	starlarkengine "github.com/algolia/docs-crawler/pkg/script/starlark"
+	starlarkengine "github.com/algolia/mini-crawler/pkg/script/starlark"
 	"github.com/spf13/cobra"
 )
 

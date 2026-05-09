@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/algolia/docs-crawler/cmd"
+	"github.com/algolia/mini-crawler/cmd"
 )
 
 func main() {

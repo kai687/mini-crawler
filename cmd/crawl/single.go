@@ -3,8 +3,8 @@ package crawl
 import (
 	"context"
 
-	"github.com/algolia/docs-crawler/pkg/crawler"
-	"github.com/algolia/docs-crawler/pkg/source"
+	"github.com/algolia/mini-crawler/pkg/crawler"
+	"github.com/algolia/mini-crawler/pkg/source"
 	"github.com/spf13/cobra"
 )
 

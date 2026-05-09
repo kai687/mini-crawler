@@ -11,12 +11,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/algolia/docs-crawler/pkg/extract"
-	"github.com/algolia/docs-crawler/pkg/fetch"
-	"github.com/algolia/docs-crawler/pkg/model"
-	"github.com/algolia/docs-crawler/pkg/output"
-	"github.com/algolia/docs-crawler/pkg/parse"
-	"github.com/algolia/docs-crawler/pkg/source"
+	"github.com/algolia/mini-crawler/pkg/extract"
+	"github.com/algolia/mini-crawler/pkg/fetch"
+	"github.com/algolia/mini-crawler/pkg/model"
+	"github.com/algolia/mini-crawler/pkg/output"
+	"github.com/algolia/mini-crawler/pkg/parse"
+	"github.com/algolia/mini-crawler/pkg/source"
 )
 
 type testOptions struct {

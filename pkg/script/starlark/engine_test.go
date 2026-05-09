@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/algolia/docs-crawler/pkg/model"
-	"github.com/algolia/docs-crawler/pkg/script"
+	"github.com/algolia/mini-crawler/pkg/model"
+	"github.com/algolia/mini-crawler/pkg/script"
 )
 
 func TestEngineLoadsAndRunsProgram(t *testing.T) {

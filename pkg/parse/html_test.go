@@ -3,7 +3,7 @@ package parse
 import (
 	"testing"
 
-	"github.com/algolia/docs-crawler/pkg/model"
+	"github.com/algolia/mini-crawler/pkg/model"
 )
 
 func TestHTMLParserParse(t *testing.T) {

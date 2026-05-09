@@ -7,9 +7,9 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/algolia/docs-crawler/pkg/model"
-	"github.com/algolia/docs-crawler/pkg/script"
-	starlarkengine "github.com/algolia/docs-crawler/pkg/script/starlark"
+	"github.com/algolia/mini-crawler/pkg/model"
+	"github.com/algolia/mini-crawler/pkg/script"
+	starlarkengine "github.com/algolia/mini-crawler/pkg/script/starlark"
 )
 
 // StarlarkExtractor extracts records from parsed HTML pages with a Starlark program.

@@ -3,8 +3,8 @@ package cmd
 import (
 	"context"
 
-	"github.com/algolia/docs-crawler/cmd/crawl"
-	scriptcmd "github.com/algolia/docs-crawler/cmd/script"
+	"github.com/algolia/mini-crawler/cmd/crawl"
+	scriptcmd "github.com/algolia/mini-crawler/cmd/script"
 	"github.com/spf13/cobra"
 )
 
