@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	if err := cmd.Execute(context.Background()); err != nil {
+	if err := cmd.Run(context.Background()); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}

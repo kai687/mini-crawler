@@ -1,20 +1,35 @@
 # docs-crawler
 
-Small Go CLI for crawling documentation pages and emitting JSONL records.
+Small Go library and CLI for turning documentation sources into JSONL records.
 
-Crawler core is generic. Site-specific extraction and record shaping live in a required Starlark script.
+## Mental model
 
-It supports two input modes:
+`docs-crawler` is a pipeline runner, not a scraper framework with one fixed idea of a page.
+A crawl is five replaceable stages:
 
-- `sitemap`: load page URLs from a sitemap, then crawl each page
-- `single`: crawl one explicit page URL
+```text
+Source -> Fetcher -> Parser -> Extractor -> Writer
+```
 
-For each page, crawler:
+- **Source** discovers references to process. A reference can be an HTTP URL, file path, object key, database ID, or any string your fetcher understands.
+- **Fetcher** loads raw bytes for one reference.
+- **Parser** turns raw bytes into a parsed document shape.
+- **Extractor** reads the parsed document and returns JSON-like records.
+- **Writer** receives records and persists them.
 
-1. Fetches HTML
-1. Parses document
-1. Runs Starlark extraction script
-1. Writes one JSON object per returned record
+The CLI is one default assembly of this pipeline:
+
+```text
+sitemap/single URL source -> HTTP fetcher -> HTML parser -> Starlark extractor -> JSONL writer
+```
+
+Library users can swap any stage. For example, local Markdown docs could use:
+
+```text
+filesystem source -> file fetcher -> Markdown parser -> custom extractor -> JSONL writer
+```
+
+The crawler core only coordinates discovery, worker fan-out, error policy, and record writing. It doesn't know about Algolia records, HTML selectors, Markdown, or HTTP beyond the concrete stages you plug in.
 
 ## Requirements
 
@@ -90,9 +105,9 @@ extract("^/doc/guides/", extract_guides)
 
 Extractor rules:
 
-- function name must start with `extract_`
-- function signature is `fn(pattern, doc, ctx)`
-- `pattern` is a regular expression matched against the URL path
+- function may have any name
+- function signature must accept exactly 3 positional arguments; names are local to the function
+- `pattern` is a valid regular expression matched against the URL path
 - registration order matters; first matching extractor wins
 - extractor returns a list of JSON-like records
 - if no extractor matches, the page is skipped with a warning
@@ -127,30 +142,44 @@ Record values must be JSON-like:
 
 ### Host helpers
 
-DOM helpers:
+| Helper | Returns | Notes |
+| --- | --- | --- |
+| `text(node)` | string | Visible text for a node. Errors if node is `None`. |
+| `safe_text(node)` | string | Visible text, or `""` when node is `None`. |
+| `first_text(root, css)` | string | Text for first matching descendant of `doc` or `node`, or `""`. |
+| `attr(node, name)` | string or `None` | Attribute value for a node. |
+| `first_attr(root, css, name)` | string or `None` | Attribute from first matching descendant of `doc` or `node`. |
+| `node_name(node)` | string | HTML node name such as `h2` or `span`. |
+| `has_parent(node, css)` | bool | Whether a node has a matching ancestor. |
+| `clone_without_text(node, css)` | string | Clone node, remove matching descendants, return text. |
+| `trim(s)` | string | Trim leading and trailing whitespace. |
+| `collapse_space(s)` | string | Replace all whitespace runs with one space. |
+| `url_join(base, ref)` | string | Resolve `ref` against `base`. |
+| `url_without_anchor(url)` | string | Remove URL fragment. |
+| `path(url)` | string | URL path only. |
+| `sha1(s)` | string | Hex SHA-1 digest for stable IDs. |
+| `regex_match(pattern, s)` | bool | RE2 regular expression match. |
+| `regex_replace(pattern, repl, s)` | string | RE2 regular expression replacement. |
 
-- `text(node)`
-- `attr(node, name)` -> string or `None`
-- `node_name(node)`
-- `has_parent(node, css)`
-- `clone_without_text(node, css)` -> clone node, remove matching descendants, return text
+Example minimal script: `examples/minimal.star`.
 
-String helpers:
+Validate a script without crawling:
 
-- `trim(s)`
-- `collapse_space(s)`
+```sh
+docs-crawler script check --script examples/algolia.star
+```
 
-URL helpers:
+Emit script info as JSON for tooling:
 
-- `url_join(base, ref)`
-- `url_without_anchor(url)`
-- `path(url)`
+```sh
+docs-crawler script check --script examples/algolia.star --json
+```
 
-Other helpers:
+Debug extractor matching and record counts during crawls:
 
-- `sha1(s)`
-- `regex_match(pattern, s)`
-- `regex_replace(pattern, repl, s)`
+```sh
+docs-crawler crawl single --script examples/minimal.star --debug-script https://example.com/doc
+```
 
 ## Output
 
@@ -221,18 +250,140 @@ Sitemap runs are best-effort by default: failed pages are logged and crawl conti
 
 Verbose logs go to stderr. JSONL records go to stdout unless `--output` is set.
 
+## Library API
+
+Core interfaces live in `pkg/crawler`:
+
+```go
+type Source interface {
+    URLs(ctx context.Context) ([]string, error)
+}
+
+type Fetcher interface {
+    Fetch(ctx context.Context, ref string) (model.Page, error)
+}
+
+type Parser interface {
+    Parse(page model.Page) (model.ParsedPage, error)
+}
+
+type Extractor interface {
+    Extract(ctx context.Context, page model.ParsedPage) ([]any, error)
+}
+
+type Writer interface {
+    Write(record any) error
+    Close() error
+}
+```
+
+Run a pipeline with the built-in HTTP/HTML/Starlark pieces:
+
+```go
+extractor, err := extract.NewStarlarkExtractor("examples/algolia.star", false)
+if err != nil {
+    return err
+}
+
+err = crawler.Run(ctx, crawler.Pipeline{
+    Source:    source.Sitemap{SitemapURL: "https://www.algolia.com/doc/sitemap.xml"},
+    Fetcher:   fetch.HTTPFetcher{},
+    Parser:    parse.HTMLParser{},
+    Extractor: extractor,
+    Writer:    output.NewJSONLWriter(os.Stdout),
+    Workers:   8,
+})
+```
+
+`model.Page` is raw fetched content:
+
+```go
+type Page struct {
+    Ref         string         // original reference: URL, path, key, etc.
+    URL         string         // canonical URL when available
+    StatusCode  int            // HTTP status when available
+    ContentType string         // content type or equivalent hint
+    Body        []byte
+    Metadata    map[string]any
+}
+```
+
+`model.ParsedPage` is parser output:
+
+```go
+type ParsedPage struct {
+    Ref      string
+    URL      string
+    Kind     string // "html", "markdown", etc.
+    Document any    // parser-specific document
+    Metadata map[string]any
+}
+```
+
+### Custom pipeline example
+
+This is the intended extension point: implement only the stages you need.
+
+```go
+type Files struct { Paths []string }
+
+func (s Files) URLs(context.Context) ([]string, error) {
+    return s.Paths, nil
+}
+
+type FileFetcher struct{}
+
+func (FileFetcher) Fetch(_ context.Context, path string) (model.Page, error) {
+    body, err := os.ReadFile(path)
+    if err != nil {
+        return model.Page{}, err
+    }
+    return model.Page{Ref: path, Body: body, ContentType: "text/markdown"}, nil
+}
+
+type MarkdownParser struct{}
+
+func (MarkdownParser) Parse(page model.Page) (model.ParsedPage, error) {
+    doc := parseMarkdown(page.Body) // your code
+    return model.ParsedPage{Ref: page.Ref, Kind: "markdown", Document: doc}, nil
+}
+
+type MarkdownExtractor struct{}
+
+func (MarkdownExtractor) Extract(_ context.Context, page model.ParsedPage) ([]any, error) {
+    doc := page.Document.(*MarkdownDoc) // your type
+    return []any{{"path": page.Ref, "title": doc.Title}}, nil
+}
+
+err := crawler.Run(ctx, crawler.Pipeline{
+    Source:    Files{Paths: []string{"docs/intro.md"}},
+    Fetcher:   FileFetcher{},
+    Parser:    MarkdownParser{},
+    Extractor: MarkdownExtractor{},
+    Writer:    output.NewJSONLWriter(os.Stdout),
+})
+```
+
+Use built-in packages when they fit:
+
+- `pkg/source`: `Single`, `Sitemap`
+- `pkg/fetch`: `HTTPFetcher`
+- `pkg/parse`: `HTMLParser`
+- `pkg/extract`: `StarlarkExtractor`
+- `pkg/output`: `JSONLWriter`
+
 ## Project layout
 
 - `main.go`: CLI entrypoint
 - `cmd`: CLI commands and flags
-- `internal/app`: crawl pipeline orchestration
-- `internal/config`: CLI config validation
-- `internal/source`: URL discovery for single URL or sitemap
-- `internal/fetch`: HTTP page fetching
-- `internal/parse`: HTML parsing
-- `internal/script`: language-neutral script interfaces and JSON validation
-- `internal/script/starlark`: Starlark engine and host API
-- `internal/output`: JSONL writer
+- `pkg/crawler`: public crawl pipeline orchestration and stage interfaces
+- `pkg/source`: URL discovery for single URL or sitemap
+- `pkg/fetch`: HTTP page fetching
+- `pkg/parse`: HTML parsing
+- `pkg/extract`: extractor implementations
+- `pkg/script`: language-neutral script interfaces and JSON validation
+- `pkg/script/starlark`: Starlark engine and host API
+- `pkg/output`: JSONL writer
 - `examples/algolia.star`: Algolia docs extractor DSL script
 
 ## Test
