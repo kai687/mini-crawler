@@ -1,10 +1,15 @@
-# docs-crawler
+# mini-crawler
 
-Small Go library and CLI for turning documentation sources into JSONL records.
+Small CLI for turning HTML pages into JSONL records.
 
-## Mental model
+## How it works
 
-`docs-crawler` is a pipeline runner, not a scraper framework with one fixed idea of a page.
+The CLI discovers URLs from a sitemap and extracts information from each HTML page.
+Extraction logic is scriptable with `starlark`, a Python-like language.
+
+## Library usage
+
+You can use this program as a library.
 A crawl is five replaceable stages:
 
 ```text
@@ -17,19 +22,24 @@ Source -> Fetcher -> Parser -> Extractor -> Writer
 - **Extractor** reads the parsed document and returns JSON-like records.
 - **Writer** receives records and persists them.
 
-The CLI is one default assembly of this pipeline:
+The CLI runs one version of this pipeline:
 
 ```text
 sitemap/single URL source -> HTTP fetcher -> HTML parser -> Starlark extractor -> JSONL writer
 ```
 
-Library users can swap any stage. For example, local Markdown docs could use:
+You can swap any stage.
+For example, local Markdown docs could use:
 
 ```text
 filesystem source -> file fetcher -> Markdown parser -> custom extractor -> JSONL writer
 ```
 
-The crawler core only coordinates discovery, worker fan-out, error policy, and record writing. It doesn't know about Algolia records, HTML selectors, Markdown, or HTTP beyond the concrete stages you plug in.
+The crawler core only coordinates discovery,
+worker fan-out,
+error policy,
+and record writing.
+It doesn't know about record shapes, HTML selectors, Markdown, or HTTP beyond the concrete stages you plug in.
 
 ## Requirements
 
@@ -37,22 +47,24 @@ The crawler core only coordinates discovery, worker fan-out, error policy, and r
 
 ## Build
 
-```bash
+```sh
 mise build
 ```
 
 ## Usage
 
-```bash
+```sh
+# Crawl URLs from a sitemap
 docs-crawler crawl sitemap --script <script.star> [flags] <sitemap-url>
-docs-crawler crawl single --script <script.star> [flags] <url>
+# Crawl a single page
+docs-crawler crawl single --script <script.star> [flags] <page-url>
 ```
 
 ### Flags
 
 Common `crawl` flags:
 
-- `--script`: required Starlark script for site-specific extraction
+- `--script`: Starlark script with the extraction logic (required)
 - `--verbose`: show crawl logs on stderr
 - `--output`: write JSONL to file instead of stdout
 
@@ -65,7 +77,7 @@ Common `crawl` flags:
 
 Crawl one page with Algolia example script:
 
-```bash
+```sh
 go run . crawl single \
   --script examples/algolia.star \
   https://algolia.com/doc/ui-libraries/autocomplete/introduction/what-is-autocomplete
@@ -73,7 +85,7 @@ go run . crawl single \
 
 Crawl sitemap with 8 workers and save output:
 
-```bash
+```sh
 go run . crawl sitemap \
   --script examples/algolia.star \
   --workers 8 \
@@ -81,17 +93,7 @@ go run . crawl sitemap \
   https://algolia.com/sitemap.xml
 ```
 
-Fail fast on first page error:
-
-```bash
-go run . crawl sitemap \
-  --script examples/algolia.star \
-  --workers 4 \
-  --fail-on-error \
-  https://algolia.com/sitemap.xml
-```
-
-## Starlark script contract
+## Extraction scripts
 
 Scripts register extractor functions with the `extract(pattern, fn)` DSL:
 
@@ -105,21 +107,11 @@ extract("^/doc/guides/", extract_guides)
 
 Extractor rules:
 
-- function may have any name
-- function signature must accept exactly 3 positional arguments; names are local to the function
-- `pattern` is a valid regular expression matched against the URL path
-- registration order matters; first matching extractor wins
-- extractor returns a list of JSON-like records
-- if no extractor matches, the page is skipped with a warning
-
-Record values must be JSON-like:
-
-- `None`
-- booleans
-- strings
-- finite numbers
-- lists
-- dicts with string keys
+- Extractor functions must accept exactly three arguments
+- `pattern` must be a valid regular expression matched against the URL path
+- Registration order matters; first matching extractor wins
+- Extractor functions must return a list of JSON-like records
+- If no extractor matches, the page is skipped with a warning
 
 ### `doc`
 
@@ -204,51 +196,15 @@ Example line from `examples/algolia.star`:
 }
 ```
 
-## Algolia example script
-
-`examples/algolia.star` ports the old hard-coded Algolia docs behavior into Starlark.
-
-It extracts content under first matching root:
-
-- `#content`
-- `#content-area`
-
-Inside content root, it extracts:
-
-- headings: `h2[id]` through `h6[id]`
-- paragraph-like text: `span[data-as='p']`
-- list items: `li` with non-empty text after links are stripped
-- API field headers: `div.param-head[id]`
-
-Page-level metadata:
-
-- title: `h1#page-title`
-- description: `meta[name='description']`
-
-It also builds Algolia-oriented fields:
-
-- `url`
-- `urlWithoutAnchor`
-- `breadcrumbSegments`
-- `breadcrumbHierarchy`
-- `contentType`
-- `variant`
-- `methodName`
-- `recordType`
-- `content`
-- `hierarchy`
-- `position`
-- `objectID`
-
-Those fields are script behavior, not crawler core behavior.
-
 ## Error policy
 
 Single URL runs fail if the page cannot be crawled.
 
-Sitemap runs are best-effort by default: failed pages are logged and crawl continues. Use `--fail-on-error` to stop on first page failure.
+Sitemap runs are best-effort by default: failed pages are logged and crawl continues.
+Use `--fail-on-error` to stop on first page failure.
 
-Verbose logs go to stderr. JSONL records go to stdout unless `--output` is set.
+Verbose logs go to stderr.
+JSONL records go to stdout unless `--output` is set.
 
 ## Library API
 
@@ -372,28 +328,14 @@ Use built-in packages when they fit:
 - `pkg/extract`: `StarlarkExtractor`
 - `pkg/output`: `JSONLWriter`
 
-## Project layout
+## Tests
 
-- `main.go`: CLI entrypoint
-- `cmd`: CLI commands and flags
-- `pkg/crawler`: public crawl pipeline orchestration and stage interfaces
-- `pkg/source`: URL discovery for single URL or sitemap
-- `pkg/fetch`: HTTP page fetching
-- `pkg/parse`: HTML parsing
-- `pkg/extract`: extractor implementations
-- `pkg/script`: language-neutral script interfaces and JSON validation
-- `pkg/script/starlark`: Starlark engine and host API
-- `pkg/output`: JSONL writer
-- `examples/algolia.star`: Algolia docs extractor DSL script
-
-## Test
-
-```bash
-go test ./...
+```sh
+mise test
 ```
 
-Full validation:
+Build the binary, lint, format, and test:
 
-```bash
+```sh
 mise all
 ```
