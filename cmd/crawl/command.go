@@ -82,7 +82,11 @@ func runCrawl(ctx context.Context, cfg config, pipeline crawler.Pipeline) error 
 	pipeline.Extractor = extractor
 	pipeline.Writer = output.NewJSONLWriter(out)
 	pipeline.RequestRate = cfg.RequestRate
+
 	pipeline.MetricsInterval = cfg.MetricsInterval
+	if cfg.Output != "" {
+		pipeline.Reporter = newTerminalReporter(cfg.Output, stderrIsTerminal())
+	}
 
 	if err := crawler.Run(ctx, pipeline); err != nil {
 		return fmt.Errorf("crawl failed: %w", err)

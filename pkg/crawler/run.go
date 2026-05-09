@@ -12,6 +12,13 @@ import (
 	"github.com/algolia/mini-crawler/pkg/script"
 )
 
+// ProgressReporter receives crawl progress updates.
+type ProgressReporter interface {
+	Start(snapshot MetricsSnapshot)
+	Update(snapshot MetricsSnapshot)
+	Finish(snapshot MetricsSnapshot)
+}
+
 // Pipeline configures one crawl run from discovery through output.
 type Pipeline struct {
 	Source    Source
@@ -19,6 +26,7 @@ type Pipeline struct {
 	Parser    Parser
 	Extractor Extractor
 	Writer    Writer
+	Reporter  ProgressReporter
 
 	Workers         int
 	FailOnError     bool
@@ -53,6 +61,8 @@ func Run(ctx context.Context, p Pipeline) error {
 		return errors.New("request rate must be >= 0")
 	}
 
+	metrics := newCrawlMetrics()
+
 	urls, err := p.Source.URLs(ctx)
 	if err != nil {
 		return fmt.Errorf("load urls: %w", err)
@@ -61,7 +71,9 @@ func Run(ctx context.Context, p Pipeline) error {
 	workers := normalizedWorkers(p.Workers)
 	slog.Info("crawl start", "urls", len(urls), "workers", workers, "request_rate", p.RequestRate)
 
-	metrics := newCrawlMetrics()
+	if p.Reporter != nil {
+		p.Reporter.Start(metrics.snapshot(len(urls)))
+	}
 
 	limiter := newRequestLimiter(p.RequestRate)
 	defer limiter.stop()
@@ -70,6 +82,10 @@ func Run(ctx context.Context, p Pipeline) error {
 
 	err = runPages(ctx, p, processor, urls, workers, metrics)
 	metrics.log("crawl metrics final")
+
+	if p.Reporter != nil {
+		p.Reporter.Finish(metrics.snapshot(len(urls)))
+	}
 
 	return err
 }
@@ -112,6 +128,10 @@ func runPages(
 			metrics,
 		); err != nil {
 			return err
+		}
+
+		if p.Reporter != nil {
+			p.Reporter.Update(metrics.snapshot(len(urls)))
 		}
 	}
 
@@ -189,12 +209,15 @@ func handlePageResult(
 ) error {
 	if result.err != nil {
 		if errors.Is(result.err, script.ErrNoExtractor) {
+			metrics.addSkipped()
 			slog.Warn("page skipped: no extractor matches", "url", result.url)
 
 			return nil
 		}
 
 		state.failed++
+
+		metrics.addFailed()
 
 		slog.Error("page failed", "url", result.url, "err", result.err)
 
