@@ -3,8 +3,10 @@ linters:
   default: fast
   enable:
     - staticcheck
+    - gomodguard_v2
     - wsl_v5
   disable:
+    - gomodguard
     - depguard
     - mnd
     - prealloc

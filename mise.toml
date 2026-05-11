@@ -11,6 +11,10 @@ gum = "latest"
 [tasks.all]
 depends = ["build", "format", "lint", "test"]
 
+[tasks.ci]
+description = "Run CI checks without modifying files"
+depends = ["build", "format-check", "lint-check", "test"]
+
 [tasks.build]
 description = "Build the project"
 run = "go build"
@@ -19,9 +23,17 @@ run = "go build"
 description = "Lint the code with golangci-lint"
 run = "golangci-lint run --fix"
 
+[tasks.lint-check]
+description = "Lint the code without applying fixes"
+run = "golangci-lint run"
+
 [tasks.format]
 description = "Format the code with golangci-lint"
 run = "golangci-lint fmt"
+
+[tasks.format-check]
+description = "Check code formatting without applying fixes"
+run = "golangci-lint fmt --diff"
 
 [tasks.test]
 description = "Run Go tests"
