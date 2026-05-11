@@ -1,8 +1,9 @@
 [tools]
-go = "1.26.0"
+go = "1.26"
 gofumpt = "latest"
 golangci-lint = "latest"
 golangci-lint-langserver = "latest"
+goreleaser = "latest"
 golines = "latest"
 gum = "latest"
 "go:github.com/incu6us/goimports-reviser/v3" = "latest"
