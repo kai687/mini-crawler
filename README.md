@@ -24,14 +24,12 @@ Running locally has a number of advantages:
   That's it. If you need more, there are excellent frameworks and commercial crawler solutions out there.
   The crawler extracts and some other tool puts your records wherever you want them.
 
-  For example, I use this pipeline to index a website into Algolia/DocSearch:
-
 - **Run where I want.**
   Just like local previews for websites,
   I wanted to get fast feedback when configuring the extraction logic.
   In production, I'm already using CI environments for many things, why not the crawler as well?
   No need to trigger a workflow that then runs in some other cloud.
-  By the time a crawl is scheduled, `mini-crawler` will already been done in your CI.
+  By the time a crawl is scheduled, `mini-crawler` will already be done in your CI.
   And if you don't want a CI at all, you can just run it locally.
 
 ## Requirements
@@ -51,6 +49,16 @@ If you do not want a URL crawled by this tool, do not include it in the sitemap,
 
 `mini-crawler` does not read or enforce `robots.txt`.
 It does, by default, skip pages that contain robots `noindex` metadata; use `--ignore-noindex` if you explicitly want to index those pages too.
+
+## Installation
+
+Install from source with Go:
+
+```sh
+go install github.com/kai687/mini-crawler@latest
+```
+
+Or download a release archive from the GitHub releases page.
 
 ## Usage
 

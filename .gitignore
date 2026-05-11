@@ -1,2 +1,6 @@
 mini-crawler
 *.jsonl
+coverage.out
+dist/
+.env
+.DS_Store
