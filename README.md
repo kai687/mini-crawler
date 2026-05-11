@@ -141,6 +141,7 @@ Rules for extractor functions:
 | `clone_without_text(node, css)` | string | Clone node, remove matching descendants, return text. |
 | `trim(s)` | string | Trim leading and trailing whitespace. |
 | `collapse_space(s)` | string | Replace all whitespace runs with one space. |
+| `escape_html(s)` | string | Escape HTML special characters for safe use in attributes like `title`, `content`, and hierarchy values. |
 | `url_join(base, ref)` | string | Resolve `ref` against `base`. |
 | `url_without_anchor(url)` | string | Remove URL fragment. |
 | `path(url)` | string | URL path only. |

@@ -39,7 +39,7 @@ def docsearch_records(doc, ctx, lvl0):
         if heading == None:
             title = ""
         else:
-            title = collapse_space(text(heading))
+            title = escape_html(collapse_space(text(heading)))
         if title == "":
             continue
 
@@ -109,6 +109,7 @@ def docsearch_records(doc, ctx, lvl0):
                 parts.append(value)
         content = "\r\n".join(parts)
         if content != "":
+            content = escape_html(content)
             content_records.append({
                 "anchor": anchor,
                 "content": content,

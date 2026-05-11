@@ -12,6 +12,7 @@ def extract_docs(pattern, doc, ctx):
     return [{
         "trimmed": trim("  hello  "),
         "collapsed": collapse_space("hello\n  docs"),
+        "escaped_html": escape_html("<tag title=\"Tom & Jerry\">'x'</tag>"),
         "joined": url_join("https://example.com/docs/page", "../api#intro"),
         "without_anchor": url_without_anchor("https://example.com/docs/page#intro"),
         "path": path("https://example.com/docs/page?x=1#intro"),
@@ -38,6 +39,12 @@ extract(".*", extract_docs)
 
 	assertMapValue(t, records[0], "trimmed", "hello")
 	assertMapValue(t, records[0], "collapsed", "hello docs")
+	assertMapValue(
+		t,
+		records[0],
+		"escaped_html",
+		"&lt;tag title=&#34;Tom &amp; Jerry&#34;&gt;&#39;x&#39;&lt;/tag&gt;",
+	)
 	assertMapValue(t, records[0], "joined", "https://example.com/api#intro")
 	assertMapValue(t, records[0], "without_anchor", "https://example.com/docs/page")
 	assertMapValue(t, records[0], "path", "/docs/page")

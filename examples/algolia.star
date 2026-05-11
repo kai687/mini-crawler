@@ -226,7 +226,7 @@ def page_record(doc, ctx):
         record["breadcrumbSegments"] = segments
         record["breadcrumbHierarchy"] = breadcrumb_hierarchy(segments)
     if description != "":
-        record["content"] = description
+        record["content"] = escape_html(description)
     if title != "":
         record["hierarchy"]["lvl1"] = title
     return record
@@ -375,11 +375,11 @@ def clear_below(hierarchy, level):
             hierarchy.pop(key)
 
 
-# Safe DOM text read: missing node -> "", whitespace collapsed.
+# Safe DOM text read for record attributes: missing node -> "", whitespace collapsed and HTML escaped.
 def node_text(node):
     if node == None:
         return ""
-    return collapse_space(text(node))
+    return escape_html(collapse_space(text(node)))
 
 
 # Safe DOM attr read: missing node/attr -> "", whitespace collapsed.

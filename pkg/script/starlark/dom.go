@@ -183,6 +183,7 @@ func predeclared() starlarkgo.StringDict {
 		"attr":               starlarkgo.NewBuiltin("attr", attrBuiltin),
 		"clone_without_text": starlarkgo.NewBuiltin("clone_without_text", cloneWithoutTextBuiltin),
 		"collapse_space":     starlarkgo.NewBuiltin("collapse_space", collapseSpaceBuiltin),
+		"escape_html":        starlarkgo.NewBuiltin("escape_html", escapeHTMLBuiltin),
 		"first_attr":         starlarkgo.NewBuiltin("first_attr", firstAttrBuiltin),
 		"first_text":         starlarkgo.NewBuiltin("first_text", firstTextBuiltin),
 		"has_parent":         starlarkgo.NewBuiltin("has_parent", hasParentBuiltin),

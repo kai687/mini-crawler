@@ -1,5 +1,5 @@
 def extract_page(pattern, doc, ctx):
-    title = collapse_space(first_text(doc, "h1"))
+    title = escape_html(collapse_space(first_text(doc, "h1")))
     page_url = ctx["url"]
 
     return [{

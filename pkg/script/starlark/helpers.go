@@ -4,6 +4,7 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
+	"html"
 	"net/url"
 	"regexp"
 	"strings"
@@ -42,6 +43,21 @@ func trimBuiltin(
 	}
 
 	return starlarkgo.String(strings.TrimSpace(value)), nil
+}
+
+// escapeHTMLBuiltin escapes special characters for safe HTML embedding.
+func escapeHTMLBuiltin(
+	_ *starlarkgo.Thread,
+	_ *starlarkgo.Builtin,
+	args starlarkgo.Tuple,
+	kwargs []starlarkgo.Tuple,
+) (starlarkgo.Value, error) {
+	var value string
+	if err := starlarkgo.UnpackArgs("escape_html", args, kwargs, "s", &value); err != nil {
+		return nil, err
+	}
+
+	return starlarkgo.String(html.EscapeString(value)), nil
 }
 
 // collapseSpaceBuiltin normalizes all whitespace runs to single spaces.
