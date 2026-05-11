@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/algolia/mini-crawler/pkg/model"
+	"github.com/kai687/mini-crawler/pkg/model"
 )
 
 // HTMLParser converts fetched page bytes into a goquery document.

@@ -3,7 +3,7 @@ package starlark
 import (
 	"fmt"
 
-	"github.com/algolia/mini-crawler/pkg/script"
+	"github.com/kai687/mini-crawler/pkg/script"
 	starlarkgo "go.starlark.net/starlark"
 	"go.starlark.net/syntax"
 )

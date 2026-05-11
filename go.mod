@@ -1,4 +1,4 @@
-module github.com/algolia/mini-crawler
+module github.com/kai687/mini-crawler
 
 go 1.26.0
 

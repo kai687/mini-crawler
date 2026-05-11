@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/algolia/mini-crawler/pkg/crawler"
-	"github.com/algolia/mini-crawler/pkg/source"
+	"github.com/kai687/mini-crawler/pkg/crawler"
+	"github.com/kai687/mini-crawler/pkg/source"
 	"github.com/spf13/cobra"
 )
 
@@ -37,8 +37,8 @@ func newSitemapCommand(ctx context.Context, cfg *config) *cobra.Command {
 	cmd.Flags().
 		BoolVar(&sitemapCfg.FailOnError, "fail-on-error", false, "fail whole run when one URL cannot be crawled")
 
-	cmd.Example = `  docs-crawler crawl sitemap https://algolia.com/doc/sitemap.xml
-  docs-crawler crawl sitemap -w 8 -o records.jsonl https://algolia.com/doc/sitemap.xml`
+	cmd.Example = `  mini-crawler crawl sitemap https://algolia.com/doc/sitemap.xml
+  mini-crawler crawl sitemap -w 8 -o records.jsonl https://algolia.com/doc/sitemap.xml`
 
 	return cmd
 }

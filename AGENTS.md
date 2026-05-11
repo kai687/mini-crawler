@@ -54,8 +54,8 @@
 
 ## Repo Quirks
 
-- Root `docs-crawler` file is local build artifact; `.gitignore` ignores it.
+- Root `mini-crawler` file is local build artifact; `.gitignore` ignores it.
 - `mise run indexing` and `mise run set-settings` are operational tasks, not normal verification:
   - they require local `algolia` CLI
   - `indexing` also requires interactive `gum confirm`
-  - `indexing` uses `./docs-crawler crawl sitemap -workers 16 https://www.algolia.com/doc/sitemap.xml | algolia objects import docs_clean -F -`
+  - `indexing` uses `./mini-crawler crawl sitemap -workers 16 https://www.algolia.com/doc/sitemap.xml | algolia objects import docs_clean -F -`

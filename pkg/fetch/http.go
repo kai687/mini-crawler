@@ -6,8 +6,8 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/algolia/mini-crawler/pkg/httpheaders"
-	"github.com/algolia/mini-crawler/pkg/model"
+	"github.com/kai687/mini-crawler/pkg/httpheaders"
+	"github.com/kai687/mini-crawler/pkg/model"
 )
 
 // HTTPFetcher retrieves pages with an http.Client.

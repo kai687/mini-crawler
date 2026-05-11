@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/algolia/mini-crawler/pkg/model"
+	"github.com/kai687/mini-crawler/pkg/model"
 )
 
 // ErrNoindex means parsed page declares robots noindex and should be skipped.

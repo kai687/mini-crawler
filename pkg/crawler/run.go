@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/algolia/mini-crawler/pkg/script"
+	"github.com/kai687/mini-crawler/pkg/script"
 )
 
 // ProgressReporter receives crawl progress updates.

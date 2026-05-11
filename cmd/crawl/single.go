@@ -3,8 +3,8 @@ package crawl
 import (
 	"context"
 
-	"github.com/algolia/mini-crawler/pkg/crawler"
-	"github.com/algolia/mini-crawler/pkg/source"
+	"github.com/kai687/mini-crawler/pkg/crawler"
+	"github.com/kai687/mini-crawler/pkg/source"
 	"github.com/spf13/cobra"
 )
 
@@ -22,7 +22,7 @@ func newSingleCommand(ctx context.Context, cfg *config) *cobra.Command {
 		},
 	}
 
-	cmd.Example = "  docs-crawler crawl single " +
+	cmd.Example = "  mini-crawler crawl single " +
 		"https://algolia.com/doc/ui-libraries/autocomplete/introduction/what-is-autocomplete"
 
 	return cmd

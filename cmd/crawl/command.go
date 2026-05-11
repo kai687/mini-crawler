@@ -10,11 +10,11 @@ import (
 	"runtime/pprof"
 	"time"
 
-	"github.com/algolia/mini-crawler/pkg/crawler"
-	"github.com/algolia/mini-crawler/pkg/extract"
-	"github.com/algolia/mini-crawler/pkg/fetch"
-	"github.com/algolia/mini-crawler/pkg/output"
-	"github.com/algolia/mini-crawler/pkg/parse"
+	"github.com/kai687/mini-crawler/pkg/crawler"
+	"github.com/kai687/mini-crawler/pkg/extract"
+	"github.com/kai687/mini-crawler/pkg/fetch"
+	"github.com/kai687/mini-crawler/pkg/output"
+	"github.com/kai687/mini-crawler/pkg/parse"
 	"github.com/spf13/cobra"
 )
 

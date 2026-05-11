@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/algolia/mini-crawler/pkg/httpheaders"
+	"github.com/kai687/mini-crawler/pkg/httpheaders"
 )
 
 // Sitemap loads page URLs from a sitemap XML document.

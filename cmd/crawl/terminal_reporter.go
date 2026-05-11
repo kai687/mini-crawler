@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/algolia/mini-crawler/pkg/crawler"
+	"github.com/kai687/mini-crawler/pkg/crawler"
 	"github.com/schollz/progressbar/v3"
 )
 

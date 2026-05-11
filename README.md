@@ -145,19 +145,19 @@ Example minimal script: `examples/minimal.star`.
 Validate a script without crawling:
 
 ```sh
-docs-crawler script check --script examples/algolia.star
+mini-crawler script check --script examples/algolia.star
 ```
 
 Emit script info as JSON for tooling:
 
 ```sh
-docs-crawler script check --script examples/algolia.star --json
+mini-crawler script check --script examples/algolia.star --json
 ```
 
 Debug extractor matching and record counts during crawls:
 
 ```sh
-docs-crawler crawl single --script examples/minimal.star --debug-script https://example.com/doc
+mini-crawler crawl single --script examples/minimal.star --debug-script https://example.com/doc
 ```
 
 ## Output

@@ -2,9 +2,11 @@ package cmd
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 
-	"github.com/algolia/mini-crawler/cmd/crawl"
-	scriptcmd "github.com/algolia/mini-crawler/cmd/script"
+	"github.com/kai687/mini-crawler/cmd/crawl"
+	scriptcmd "github.com/kai687/mini-crawler/cmd/script"
 	"github.com/spf13/cobra"
 )
 
@@ -14,7 +16,7 @@ func Run(ctx context.Context) error {
 
 func newRootCommand(ctx context.Context) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:           "docs-crawler",
+		Use:           commandName(),
 		Short:         "Crawl HTML pages and emit JSONL records",
 		SilenceUsage:  true,
 		SilenceErrors: true,
@@ -24,4 +26,13 @@ func newRootCommand(ctx context.Context) *cobra.Command {
 	cmd.AddCommand(scriptcmd.NewCommand(ctx))
 
 	return cmd
+}
+
+func commandName() string {
+	name := filepath.Base(os.Args[0])
+	if name == "." || name == string(os.PathSeparator) || name == "" {
+		return "mini-crawler"
+	}
+
+	return name
 }

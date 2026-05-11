@@ -2,7 +2,7 @@ package script
 
 import (
 	"github.com/PuerkitoBio/goquery"
-	"github.com/algolia/mini-crawler/pkg/model"
+	"github.com/kai687/mini-crawler/pkg/model"
 )
 
 // Document is the safe DOM handle passed to scripts.
