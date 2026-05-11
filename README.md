@@ -36,9 +36,21 @@ Running locally has a number of advantages:
 
 ## Requirements
 
-**Only crawl sites you own.**
+**Only crawl sites you own or have permission to index.**
 Your site must have a sitemap for URL discovery.
 This crawler does not crawl links found in documents.
+
+## Scope and responsibility
+
+`mini-crawler` is a simple indexing tool for responsible developers.
+It is not an abuse-prevention system, a security boundary, or a general-purpose web crawler.
+The defaults are intentionally small and explicit, but nothing prevents a user from choosing aggressive options, changing the source, or using a fork.
+
+In sitemap mode, the sitemap is treated as the crawl manifest: URLs listed there are considered intended inputs for indexing.
+If you do not want a URL crawled by this tool, do not include it in the sitemap, or filter it out with your extraction rules.
+
+`mini-crawler` does not read or enforce `robots.txt`.
+It does, by default, skip pages that contain robots `noindex` metadata; use `--ignore-noindex` if you explicitly want to index those pages too.
 
 ## Usage
 
@@ -63,6 +75,7 @@ mini-crawler crawl sitemap SITEMAP_URL --script EXTRACTION.STAR --workers 8 --ou
 This processes your sitemap in parallel.
 If you plan to use this program regularly,
 run tests to see how much you actually benefit from parallelism.
+Use `--rate` to cap page requests per second when you want a gentler crawl.
 
 ## Extraction scripts
 
