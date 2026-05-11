@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"os"
 	"sync"
-	"time"
 
 	"github.com/kai687/mini-crawler/pkg/script"
 )
@@ -31,10 +30,9 @@ type Pipeline struct {
 	Writer           Writer
 	Reporter         ProgressReporter
 
-	Workers         int
-	FailOnError     bool
-	RequestRate     float64
-	MetricsInterval time.Duration
+	Workers     int
+	FailOnError bool
+	RequestRate float64
 }
 
 // Run executes one crawl pipeline.
@@ -126,7 +124,7 @@ func runPages(
 	metricsDone := make(chan struct{})
 	defer close(metricsDone)
 
-	startMetricsLogger(metricsDone, metrics, p.MetricsInterval)
+	startMetricsLogger(metricsDone, metrics, defaultMetricsInterval)
 
 	jobs := make(chan string)
 	results := make(chan pageResult)

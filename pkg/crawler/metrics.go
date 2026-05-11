@@ -6,6 +6,8 @@ import (
 	"time"
 )
 
+const defaultMetricsInterval = 10 * time.Second
+
 // MetricsSnapshot is a point-in-time view of crawl progress.
 type MetricsSnapshot struct {
 	Started  time.Time

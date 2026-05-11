@@ -19,14 +19,13 @@ import (
 )
 
 type config struct {
-	Verbose         bool
-	DebugScript     bool
-	Output          string
-	Script          string
-	RequestRate     float64
-	MetricsInterval time.Duration
-	CPUProfile      string
-	IgnoreNoindex   bool
+	Verbose       bool
+	DebugScript   bool
+	Output        string
+	Script        string
+	RequestRate   float64
+	CPUProfile    string
+	IgnoreNoindex bool
 }
 
 func NewCommand(ctx context.Context) *cobra.Command {
@@ -39,20 +38,15 @@ func NewCommand(ctx context.Context) *cobra.Command {
 
 	cmd.PersistentFlags().BoolVar(&cfg.Verbose, "verbose", false, "show crawl logs")
 	cmd.PersistentFlags().
-		BoolVar(&cfg.DebugScript, "debug-script", false, "show script matching and extraction logs")
+		BoolVar(&cfg.DebugScript, "debug-script", false, "show script matching and extraction logs (requires --output)")
 	cmd.PersistentFlags().
 		StringVarP(&cfg.Output, "output", "o", "", "write records to file instead of stdout")
 	cmd.PersistentFlags().
 		StringVarP(&cfg.Script, "script", "s", "", "required Starlark script for site-specific extraction")
 	cmd.PersistentFlags().
 		Float64Var(&cfg.RequestRate, "rate", 0, "maximum page requests per second (0 disables limit)")
-	cmd.PersistentFlags().DurationVar(
-		&cfg.MetricsInterval,
-		"metrics-interval",
-		10*time.Second,
-		"log crawl metrics at this interval when verbose (0 disables periodic logs)",
-	)
 	cmd.PersistentFlags().StringVar(&cfg.CPUProfile, "cpu-profile", "", "write CPU profile to file")
+	_ = cmd.PersistentFlags().MarkHidden("cpu-profile")
 	cmd.PersistentFlags().BoolVar(
 		&cfg.IgnoreNoindex,
 		"ignore-noindex",
@@ -67,8 +61,8 @@ func NewCommand(ctx context.Context) *cobra.Command {
 }
 
 func runCrawl(ctx context.Context, cfg config, pipeline crawler.Pipeline) error {
-	if cfg.Script == "" {
-		return fmt.Errorf("invalid config: script flag required")
+	if err := validateConfig(cfg); err != nil {
+		return err
 	}
 
 	stopProfile, err := startCPUProfile(cfg.CPUProfile)
@@ -90,10 +84,6 @@ func runCrawl(ctx context.Context, cfg config, pipeline crawler.Pipeline) error 
 		return err
 	}
 
-	if cfg.RequestRate < 0 {
-		return fmt.Errorf("invalid config: rate must be >= 0")
-	}
-
 	pipeline.Fetcher = fetch.HTTPFetcher{Client: newHTTPClient()}
 
 	pipeline.Parser = parse.HTMLParser{}
@@ -105,13 +95,28 @@ func runCrawl(ctx context.Context, cfg config, pipeline crawler.Pipeline) error 
 	pipeline.Writer = output.NewJSONLWriter(out)
 	pipeline.RequestRate = cfg.RequestRate
 
-	pipeline.MetricsInterval = cfg.MetricsInterval
 	if cfg.Output != "" {
 		pipeline.Reporter = newTerminalReporter(cfg.Output, stderrIsTerminal())
 	}
 
 	if err := crawler.Run(ctx, pipeline); err != nil {
 		return fmt.Errorf("crawl failed: %w", err)
+	}
+
+	return nil
+}
+
+func validateConfig(cfg config) error {
+	if cfg.Script == "" {
+		return fmt.Errorf("invalid config: script flag required")
+	}
+
+	if cfg.DebugScript && cfg.Output == "" {
+		return fmt.Errorf("invalid config: debug-script requires --output")
+	}
+
+	if cfg.RequestRate < 0 {
+		return fmt.Errorf("invalid config: rate must be >= 0")
 	}
 
 	return nil
@@ -168,17 +173,12 @@ func newHTTPClient() *http.Client {
 	}
 }
 
-func configureLogger(verbose bool, debugScript bool) {
+func configureLogger(verbose bool, _ bool) {
 	logOut := io.Discard
-	if verbose || debugScript {
+	if verbose {
 		logOut = os.Stderr
 	}
 
-	level := slog.LevelInfo
-	if debugScript {
-		level = slog.LevelDebug
-	}
-
-	logger := slog.New(slog.NewTextHandler(logOut, &slog.HandlerOptions{Level: level}))
+	logger := slog.New(slog.NewTextHandler(logOut, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	slog.SetDefault(logger)
 }

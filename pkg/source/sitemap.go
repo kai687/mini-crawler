@@ -23,70 +23,139 @@ type Sitemap struct {
 	Client *http.Client
 }
 
+const maxSitemapIndexDepth = 10
+
+type sitemapKind string
+
+const (
+	sitemapKindURLSet sitemapKind = "urlset"
+	sitemapKindIndex  sitemapKind = "sitemapindex"
+)
+
+type parsedSitemap struct {
+	kind sitemapKind
+	locs []string
+}
+
 // URLs fetches the sitemap and returns resolved page URLs.
 func (s Sitemap) URLs(ctx context.Context) ([]string, error) {
 	if s.Client == nil {
 		s.Client = http.DefaultClient
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, s.SitemapURL, nil)
+	return s.urls(ctx, s.SitemapURL, map[string]bool{}, 0)
+}
+
+func (s Sitemap) urls(
+	ctx context.Context,
+	sitemapURL string,
+	visited map[string]bool,
+	depth int,
+) ([]string, error) {
+	if depth > maxSitemapIndexDepth {
+		return nil, fmt.Errorf("sitemap index depth exceeded %d", maxSitemapIndexDepth)
+	}
+
+	if visited[sitemapURL] {
+		return nil, nil
+	}
+
+	visited[sitemapURL] = true
+
+	parsed, err := s.fetchAndParse(ctx, sitemapURL)
 	if err != nil {
-		return nil, fmt.Errorf("build sitemap request: %w", err)
+		return nil, err
+	}
+
+	switch parsed.kind {
+	case sitemapKindURLSet:
+		return parsed.locs, nil
+	case sitemapKindIndex:
+		// Expand child sitemaps below.
+	default:
+		return nil, fmt.Errorf("unsupported sitemap root %q", parsed.kind)
+	}
+
+	urls := []string{}
+	for _, childURL := range parsed.locs {
+		childURLs, err := s.urls(ctx, childURL, visited, depth+1)
+		if err != nil {
+			return nil, err
+		}
+
+		urls = append(urls, childURLs...)
+	}
+
+	return urls, nil
+}
+
+func (s Sitemap) fetchAndParse(ctx context.Context, sitemapURL string) (parsedSitemap, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, sitemapURL, nil)
+	if err != nil {
+		return parsedSitemap{}, fmt.Errorf("build sitemap request: %w", err)
 	}
 
 	req.Header.Set("User-Agent", httpheaders.UserAgent)
 
 	resp, err := s.Client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("fetch sitemap: %w", err)
+		return parsedSitemap{}, fmt.Errorf("fetch sitemap: %w", err)
 	}
 	defer resp.Body.Close()
 
-	base, err := url.Parse(s.SitemapURL)
+	base, err := url.Parse(sitemapURL)
 	if err != nil {
-		return nil, fmt.Errorf("parse sitemap url: %w", err)
+		return parsedSitemap{}, fmt.Errorf("parse sitemap url: %w", err)
 	}
 
-	urls, err := parseSitemapURLs(resp.Body, base)
+	parsed, err := parseSitemap(resp.Body, base)
 	if err != nil {
-		return nil, fmt.Errorf("parse sitemap xml: %w", err)
+		return parsedSitemap{}, fmt.Errorf("parse sitemap xml: %w", err)
 	}
 
-	return urls, nil
+	return parsed, nil
 }
 
-func parseSitemapURLs(r io.Reader, base *url.URL) ([]string, error) {
+func parseSitemap(r io.Reader, base *url.URL) (parsedSitemap, error) {
 	decoder := xml.NewDecoder(r)
-	urls := []string{}
+	parsed := parsedSitemap{}
 
 	for {
 		token, err := decoder.Token()
 		if err == io.EOF {
-			return urls, nil
+			return parsed, nil
 		}
 
 		if err != nil {
-			return nil, err
+			return parsedSitemap{}, err
 		}
 
 		start, ok := token.(xml.StartElement)
-		if !ok || start.Name.Local != "loc" {
+		if !ok {
+			continue
+		}
+
+		if parsed.kind == "" {
+			parsed.kind = sitemapKind(start.Name.Local)
+		}
+
+		if start.Name.Local != "loc" {
 			continue
 		}
 
 		var raw string
 		if err := decoder.DecodeElement(&raw, &start); err != nil {
-			return nil, err
+			return parsedSitemap{}, err
 		}
 
 		raw = strings.TrimSpace(raw)
 
 		resolved, err := resolveURL(base, raw)
 		if err != nil {
-			return nil, fmt.Errorf("resolve sitemap url %q: %w", raw, err)
+			return parsedSitemap{}, fmt.Errorf("resolve sitemap url %q: %w", raw, err)
 		}
 
-		urls = append(urls, resolved)
+		parsed.locs = append(parsed.locs, resolved)
 	}
 }
 

@@ -2,8 +2,9 @@ package starlark
 
 import (
 	"fmt"
-	"log/slog"
+	"io"
 	"regexp"
+	"sync"
 	"time"
 
 	"github.com/kai687/mini-crawler/pkg/script"
@@ -22,6 +23,13 @@ type Program struct {
 	scriptPath        string
 	extractors        []extractorRegistration
 	maxExecutionSteps uint64
+	debugOut          io.Writer
+	debugMu           sync.Mutex
+}
+
+// SetDebugWriter enables human-readable script debug logs.
+func (p *Program) SetDebugWriter(out io.Writer) {
+	p.debugOut = out
 }
 
 // Extract calls the first registered extractor whose pattern matches ctx.URL path.
@@ -33,16 +41,12 @@ func (p *Program) Extract(doc script.Document, ctx script.Context) ([]map[string
 			continue
 		}
 
-		slog.Debug(
-			"script extractor matched",
-			"script",
-			p.scriptPath,
-			"extractor",
-			extractor.fn.Name(),
-			"pattern",
-			extractor.pattern,
-			"url",
-			ctx.URL,
+		p.writeDebug(
+			"extractor matched",
+			"url", ctx.URL,
+			"extractor", extractor.fn.Name(),
+			"pattern", extractor.pattern,
+			"script", p.scriptPath,
 		)
 
 		start := time.Now()
@@ -52,26 +56,36 @@ func (p *Program) Extract(doc script.Document, ctx script.Context) ([]map[string
 			return nil, err
 		}
 
-		slog.Debug(
-			"script extractor finished",
-			"script",
-			p.scriptPath,
-			"extractor",
-			extractor.fn.Name(),
-			"pattern",
-			extractor.pattern,
-			"url",
-			ctx.URL,
-			"records",
-			len(records),
-			"duration",
-			time.Since(start),
+		p.writeDebug(
+			"extractor finished",
+			"url", ctx.URL,
+			"extractor", extractor.fn.Name(),
+			"pattern", extractor.pattern,
+			"script", p.scriptPath,
+			"records", len(records),
+			"duration", time.Since(start).Round(time.Millisecond),
 		)
 
 		return records, nil
 	}
 
 	return nil, fmt.Errorf("script %s: %w %s", p.scriptPath, script.ErrNoExtractor, ctx.URL)
+}
+
+func (p *Program) writeDebug(title string, fields ...any) {
+	if p.debugOut == nil {
+		return
+	}
+
+	p.debugMu.Lock()
+	defer p.debugMu.Unlock()
+
+	_, _ = fmt.Fprintf(p.debugOut, "debug script: %s\n", title)
+	for i := 0; i+1 < len(fields); i += 2 {
+		_, _ = fmt.Fprintf(p.debugOut, "  %-9s %v\n", fmt.Sprint(fields[i])+":", fields[i+1])
+	}
+
+	_, _ = fmt.Fprintln(p.debugOut)
 }
 
 func (p *Program) extractWith(

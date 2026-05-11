@@ -43,6 +43,56 @@ func TestSitemapURLs(t *testing.T) {
 	}
 }
 
+func TestSitemapIndexURLs(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.UserAgent() != "mini-crawler/0.1" {
+			t.Fatalf("User-Agent = %q", r.UserAgent())
+		}
+
+		w.Header().Set("Content-Type", "application/xml")
+
+		switch r.URL.Path {
+		case "/sitemap.xml":
+			_, _ = w.Write([]byte(`<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <sitemap><loc>/docs-sitemap.xml</loc></sitemap>
+  <sitemap><loc>/api-sitemap.xml</loc></sitemap>
+</sitemapindex>`))
+		case "/docs-sitemap.xml":
+			_, _ = w.Write([]byte(`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>/docs/intro</loc></url>
+</urlset>`))
+		case "/api-sitemap.xml":
+			_, _ = w.Write([]byte(`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>/api/search</loc></url>
+</urlset>`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	s := Sitemap{
+		SitemapURL: server.URL + "/sitemap.xml",
+		Client:     server.Client(),
+	}
+
+	urls, err := s.URLs(context.Background())
+	if err != nil {
+		t.Fatalf("URLs() err = %v", err)
+	}
+
+	want := []string{
+		server.URL + "/docs/intro",
+		server.URL + "/api/search",
+	}
+	if !reflect.DeepEqual(urls, want) {
+		t.Fatalf("URLs() = %#v, want %#v", urls, want)
+	}
+}
+
 func TestResolveURL(t *testing.T) {
 	base := mustParseURL(t, "https://example.com/sitemap.xml")
 
