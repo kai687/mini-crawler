@@ -20,10 +20,11 @@ import (
 )
 
 type testOptions struct {
-	Source      Source
-	Workers     int
-	FailOnError bool
-	Script      string
+	Source        Source
+	Workers       int
+	FailOnError   bool
+	IgnoreNoindex bool
+	Script        string
 }
 
 func runPipeline(ctx context.Context, opts testOptions, out *bytes.Buffer) error {
@@ -32,14 +33,20 @@ func runPipeline(ctx context.Context, opts testOptions, out *bytes.Buffer) error
 		return err
 	}
 
+	var filter ParsedPageFilter
+	if !opts.IgnoreNoindex {
+		filter = RobotsNoindexFilter{}
+	}
+
 	return Run(ctx, Pipeline{
-		Source:      opts.Source,
-		Fetcher:     fetch.HTTPFetcher{},
-		Parser:      parse.HTMLParser{},
-		Extractor:   extractor,
-		Writer:      output.NewJSONLWriter(out),
-		Workers:     opts.Workers,
-		FailOnError: opts.FailOnError,
+		Source:           opts.Source,
+		Fetcher:          fetch.HTTPFetcher{},
+		Parser:           parse.HTMLParser{},
+		ParsedPageFilter: filter,
+		Extractor:        extractor,
+		Writer:           output.NewJSONLWriter(out),
+		Workers:          opts.Workers,
+		FailOnError:      opts.FailOnError,
 	})
 }
 
@@ -178,6 +185,74 @@ extract(".*", extract_page)
 	}
 }
 
+func TestRunSkipsRobotsNoindexByDefault(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = w.Write(
+			[]byte(
+				`<html><head><meta name="robots" content="noindex, follow"></head><body><h1>Hidden</h1></body></html>`,
+			),
+		)
+	}))
+	defer server.Close()
+
+	scriptPath := writeScript(t, `
+def extract_page(pattern, doc, ctx):
+    return [{"url": ctx["url"]}]
+
+extract(".*", extract_page)
+`)
+
+	var out bytes.Buffer
+
+	err := runPipeline(context.Background(), testOptions{
+		Source: source.Single{URL: server.URL},
+		Script: scriptPath,
+	}, &out)
+	if err != nil {
+		t.Fatalf("Run() err = %v", err)
+	}
+
+	if out.String() != "" {
+		t.Fatalf("output = %q, want no records", out.String())
+	}
+}
+
+func TestRunCanIgnoreRobotsNoindex(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = w.Write(
+			[]byte(
+				`<html><head><meta name="robots" content="NOINDEX"></head><body><h1>Hidden</h1></body></html>`,
+			),
+		)
+	}))
+	defer server.Close()
+
+	scriptPath := writeScript(t, `
+def extract_page(pattern, doc, ctx):
+    return [{"url": ctx["url"]}]
+
+extract(".*", extract_page)
+`)
+
+	var out bytes.Buffer
+
+	err := runPipeline(context.Background(), testOptions{
+		Source:        source.Single{URL: server.URL},
+		Script:        scriptPath,
+		IgnoreNoindex: true,
+	}, &out)
+	if err != nil {
+		t.Fatalf("Run() err = %v", err)
+	}
+
+	want := `{"url":"` + server.URL + `"}` + "\n"
+	if out.String() != want {
+		t.Fatalf("output = %q, want %q", out.String(), want)
+	}
+}
+
 func TestRunSupportsCustomPipelineStages(t *testing.T) {
 	var out bytes.Buffer
 
@@ -230,6 +305,118 @@ func (fakeExtractor) Extract(_ context.Context, page model.ParsedPage) ([]any, e
 		"kind":  page.Kind,
 		"title": page.Document,
 	}}, nil
+}
+
+type recordingFetcher struct {
+	fetched map[string]bool
+}
+
+func (f *recordingFetcher) Fetch(_ context.Context, ref string) (model.Page, error) {
+	if f.fetched == nil {
+		f.fetched = map[string]bool{}
+	}
+
+	f.fetched[ref] = true
+
+	return model.Page{Ref: ref, Body: []byte("# Hello")}, nil
+}
+
+type recordingParser struct {
+	parsed map[string]bool
+}
+
+func (p *recordingParser) Parse(page model.Page) (model.ParsedPage, error) {
+	if p.parsed == nil {
+		p.parsed = map[string]bool{}
+	}
+
+	p.parsed[page.Ref] = true
+
+	return fakeParser{}.Parse(page)
+}
+
+type skipRefFilter struct {
+	skip string
+}
+
+func (f skipRefFilter) FilterRef(_ context.Context, ref string) error {
+	if ref == f.skip {
+		return ErrFiltered
+	}
+
+	return nil
+}
+
+type skipPageFilter struct {
+	skip string
+}
+
+func (f skipPageFilter) FilterPage(_ context.Context, page model.Page) error {
+	if page.Ref == f.skip {
+		return ErrFiltered
+	}
+
+	return nil
+}
+
+func TestRunRefFilterSkipsBeforeFetch(t *testing.T) {
+	fetcher := &recordingFetcher{}
+
+	var out bytes.Buffer
+
+	err := Run(context.Background(), Pipeline{
+		Source:    fakeSource{refs: []string{"docs/keep.md", "docs/skip.md"}},
+		RefFilter: skipRefFilter{skip: "docs/skip.md"},
+		Fetcher:   fetcher,
+		Parser:    fakeParser{},
+		Extractor: fakeExtractor{},
+		Writer:    output.NewJSONLWriter(&out),
+	})
+	if err != nil {
+		t.Fatalf("Run() err = %v", err)
+	}
+
+	if strings.Contains(out.String(), "docs/skip.md") {
+		t.Fatalf("output = %q, want skipped ref omitted", out.String())
+	}
+
+	if fetcher.fetched["docs/skip.md"] {
+		t.Fatal("skipped ref was fetched")
+	}
+
+	if !fetcher.fetched["docs/keep.md"] {
+		t.Fatal("kept ref was not fetched")
+	}
+}
+
+func TestRunPreParseFilterSkipsBeforeParse(t *testing.T) {
+	parser := &recordingParser{}
+
+	var out bytes.Buffer
+
+	err := Run(context.Background(), Pipeline{
+		Source:         fakeSource{refs: []string{"docs/keep.md", "docs/skip.md"}},
+		Fetcher:        fakeFetcher{},
+		PreParseFilter: skipPageFilter{skip: "docs/skip.md"},
+		Parser:         parser,
+		Extractor:      fakeExtractor{},
+		Writer:         output.NewJSONLWriter(&out),
+	})
+	if err != nil {
+		t.Fatalf("Run() err = %v", err)
+	}
+
+	if strings.Contains(out.String(), "docs/skip.md") {
+		t.Fatalf("output = %q, want skipped page omitted", out.String())
+	}
+
+	if parser.parsed["docs/skip.md"] {
+		t.Fatal("skipped page was parsed")
+	}
+
+	if !parser.parsed["docs/keep.md"] {
+		t.Fatal("kept page was not parsed")
+	}
 }
 
 func TestNormalizedWorkers(t *testing.T) {

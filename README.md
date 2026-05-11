@@ -1,19 +1,19 @@
 # mini-crawler
 
-Small CLI for extracting JSON records from HTML pages.
-You can then index these records into search engines or databases.
-
-## How it works
-
-The CLI discovers URLs from a sitemap and extracts information from each HTML page.
-You can control what gets extracted by scripts.
+`mini-crawler` is a small command-line tool that reads URLs from a sitemap and extracts content from each page in the form of JSON records.
+You can control what gets extracted with scripts.
+You can then upload these records to search engines like Algolia,
+or databases.
 
 ## Why this exists
 
 I wanted a simple crawler that I can run on my machine for indexing documentation sites
 that I'm working on.
 
-Features and omissions:
+Running locally has a number of advantages:
+
+- **Pipeline friendly.**
+  This CLI focuses on addressing only one use case.
 
 - **Configuration as code.**
   I didn't want my configuration to live in some dashboard.
@@ -25,10 +25,6 @@ Features and omissions:
   The crawler extracts and some other tool puts your records wherever you want them.
 
   For example, I use this pipeline to index a website into Algolia/DocSearch:
-
-  ```sh
-  mini-crawler crawl sitemap SITEMAP_URL -w 8 | algolia objects import INDEX_NAME -F -
-  ```
 
 - **Run where I want.**
   Just like local previews for websites,
@@ -159,11 +155,14 @@ Output is newline-delimited JSON (`.jsonl`).
 ## Library usage
 
 You can use this program as a library.
-A crawl has five replaceable stages:
+A crawl has five replaceable stages plus optional filters:
 
 1. **Source** discovers references to process. A reference can be an HTTP URL, file path, object key, database ID, or any string your fetcher understands.
+1. **RefFilter** optionally skips references before fetching.
 1. **Fetcher** loads raw bytes for one reference.
+1. **PreParseFilter** optionally skips fetched pages before parsing.
 1. **Parser** turns raw bytes into a parsed document shape.
+1. **ParsedPageFilter** optionally skips parsed pages before extraction.
 1. **Extractor** reads the parsed document and returns JSON-like records.
 1. **Writer** receives records and persists them.
 
@@ -182,12 +181,24 @@ type Source interface {
     URLs(ctx context.Context) ([]string, error)
 }
 
+type RefFilter interface {
+    FilterRef(ctx context.Context, ref string) error
+}
+
 type Fetcher interface {
     Fetch(ctx context.Context, ref string) (model.Page, error)
 }
 
+type PreParseFilter interface {
+    FilterPage(ctx context.Context, page model.Page) error
+}
+
 type Parser interface {
     Parse(page model.Page) (model.ParsedPage, error)
+}
+
+type ParsedPageFilter interface {
+    FilterParsedPage(ctx context.Context, page model.ParsedPage) error
 }
 
 type Extractor interface {

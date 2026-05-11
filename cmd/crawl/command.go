@@ -26,6 +26,7 @@ type config struct {
 	RequestRate     float64
 	MetricsInterval time.Duration
 	CPUProfile      string
+	IgnoreNoindex   bool
 }
 
 func NewCommand(ctx context.Context) *cobra.Command {
@@ -52,6 +53,12 @@ func NewCommand(ctx context.Context) *cobra.Command {
 		"log crawl metrics at this interval when verbose (0 disables periodic logs)",
 	)
 	cmd.PersistentFlags().StringVar(&cfg.CPUProfile, "cpu-profile", "", "write CPU profile to file")
+	cmd.PersistentFlags().BoolVar(
+		&cfg.IgnoreNoindex,
+		"ignore-noindex",
+		false,
+		"index pages even when they have robots noindex metadata",
+	)
 
 	cmd.AddCommand(newSitemapCommand(ctx, &cfg))
 	cmd.AddCommand(newSingleCommand(ctx, &cfg))
@@ -88,7 +95,12 @@ func runCrawl(ctx context.Context, cfg config, pipeline crawler.Pipeline) error 
 	}
 
 	pipeline.Fetcher = fetch.HTTPFetcher{Client: newHTTPClient()}
+
 	pipeline.Parser = parse.HTMLParser{}
+	if !cfg.IgnoreNoindex {
+		pipeline.ParsedPageFilter = crawler.RobotsNoindexFilter{}
+	}
+
 	pipeline.Extractor = extractor
 	pipeline.Writer = output.NewJSONLWriter(out)
 	pipeline.RequestRate = cfg.RequestRate

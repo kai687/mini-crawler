@@ -21,12 +21,15 @@ type ProgressReporter interface {
 
 // Pipeline configures one crawl run from discovery through output.
 type Pipeline struct {
-	Source    Source
-	Fetcher   Fetcher
-	Parser    Parser
-	Extractor Extractor
-	Writer    Writer
-	Reporter  ProgressReporter
+	Source           Source
+	RefFilter        RefFilter
+	Fetcher          Fetcher
+	PreParseFilter   PreParseFilter
+	Parser           Parser
+	ParsedPageFilter ParsedPageFilter
+	Extractor        Extractor
+	Writer           Writer
+	Reporter         ProgressReporter
 
 	Workers         int
 	FailOnError     bool
@@ -78,7 +81,7 @@ func Run(ctx context.Context, p Pipeline) error {
 	limiter := newRequestLimiter(p.RequestRate)
 	defer limiter.stop()
 
-	processor := newPipelineProcessor(p.Fetcher, p.Parser, p.Extractor, limiter, metrics)
+	processor := newProcessor(p, limiter, metrics)
 
 	err = runPages(ctx, p, processor, urls, workers, metrics)
 	metrics.log("crawl metrics final")
@@ -88,6 +91,19 @@ func Run(ctx context.Context, p Pipeline) error {
 	}
 
 	return err
+}
+
+func newProcessor(p Pipeline, limiter *requestLimiter, metrics *crawlMetrics) pipelineProcessor {
+	return newPipelineProcessor(
+		p.RefFilter,
+		p.Fetcher,
+		p.PreParseFilter,
+		p.Parser,
+		p.ParsedPageFilter,
+		p.Extractor,
+		limiter,
+		metrics,
+	)
 }
 
 // normalizedWorkers keeps worker count valid for the fan-out loop.
@@ -208,10 +224,7 @@ func handlePageResult(
 	metrics *crawlMetrics,
 ) error {
 	if result.err != nil {
-		if errors.Is(result.err, script.ErrNoExtractor) {
-			metrics.addSkipped()
-			slog.Warn("page skipped: no extractor matches", "url", result.url)
-
+		if handled := handleSkippedPage(result, metrics); handled {
 			return nil
 		}
 
@@ -249,4 +262,29 @@ func handlePageResult(
 	metrics.addRecords(written)
 
 	return nil
+}
+
+func handleSkippedPage(result pageResult, metrics *crawlMetrics) bool {
+	message, ok := skipMessage(result.err)
+	if !ok {
+		return false
+	}
+
+	metrics.addSkipped()
+	slog.Warn(message, "url", result.url)
+
+	return true
+}
+
+func skipMessage(err error) (string, bool) {
+	switch {
+	case errors.Is(err, script.ErrNoExtractor):
+		return "page skipped: no extractor matches", true
+	case errors.Is(err, ErrNoindex):
+		return "page skipped: robots noindex", true
+	case errors.Is(err, ErrFiltered):
+		return "page skipped: filter", true
+	default:
+		return "", false
+	}
 }
