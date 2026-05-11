@@ -37,9 +37,9 @@ func NewCommand(ctx context.Context) *cobra.Command {
 	cmd.PersistentFlags().
 		BoolVar(&cfg.DebugScript, "debug-script", false, "show script matching and extraction logs")
 	cmd.PersistentFlags().
-		StringVar(&cfg.Output, "output", "", "write records to file instead of stdout")
+		StringVarP(&cfg.Output, "output", "o", "", "write records to file instead of stdout")
 	cmd.PersistentFlags().
-		StringVar(&cfg.Script, "script", "", "required Starlark script for site-specific extraction")
+		StringVarP(&cfg.Script, "script", "s", "", "required Starlark script for site-specific extraction")
 	cmd.PersistentFlags().
 		Float64Var(&cfg.RequestRate, "rate", 0, "maximum page requests per second (0 disables limit)")
 	cmd.PersistentFlags().DurationVar(

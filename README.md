@@ -64,13 +64,13 @@ docs-crawler crawl single --script <script.star> [flags] <page-url>
 
 Common `crawl` flags:
 
-- `--script`: Starlark script with the extraction logic (required)
+- `--script`, `-s`: Starlark script with the extraction logic (required)
 - `--verbose`: show crawl logs on stderr
-- `--output`: write JSONL to file instead of stdout
+- `--output`, `-o`: write JSONL to file instead of stdout
 
 `sitemap` flags:
 
-- `--workers`: number of concurrent page workers. Default: `1`
+- `--workers`, `-w`: number of concurrent page workers. Default: `1`
 - `--fail-on-error`: stop run if one URL fails
 
 ## Examples
@@ -79,7 +79,7 @@ Crawl one page with Algolia example script:
 
 ```sh
 go run . crawl single \
-  --script examples/algolia.star \
+  -s examples/algolia.star \
   https://algolia.com/doc/ui-libraries/autocomplete/introduction/what-is-autocomplete
 ```
 
@@ -87,9 +87,9 @@ Crawl sitemap with 8 workers and save output:
 
 ```sh
 go run . crawl sitemap \
-  --script examples/algolia.star \
-  --workers 8 \
-  --output records.jsonl \
+  -s examples/algolia.star \
+  -w 8 \
+  -o records.jsonl \
   https://algolia.com/sitemap.xml
 ```
 

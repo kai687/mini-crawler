@@ -33,12 +33,12 @@ func newSitemapCommand(ctx context.Context, cfg *config) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().IntVar(&sitemapCfg.Workers, "workers", 1, "number of concurrent page workers")
+	cmd.Flags().IntVarP(&sitemapCfg.Workers, "workers", "w", 1, "number of concurrent page workers")
 	cmd.Flags().
 		BoolVar(&sitemapCfg.FailOnError, "fail-on-error", false, "fail whole run when one URL cannot be crawled")
 
 	cmd.Example = `  docs-crawler crawl sitemap https://algolia.com/doc/sitemap.xml
-  docs-crawler crawl sitemap --workers 8 --output records.jsonl https://algolia.com/doc/sitemap.xml`
+  docs-crawler crawl sitemap -w 8 -o records.jsonl https://algolia.com/doc/sitemap.xml`
 
 	return cmd
 }
