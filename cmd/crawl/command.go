@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net/http"
 	"os"
 	"time"
 
@@ -77,7 +78,7 @@ func runCrawl(ctx context.Context, cfg config, pipeline crawler.Pipeline) error 
 		return fmt.Errorf("invalid config: rate must be >= 0")
 	}
 
-	pipeline.Fetcher = fetch.HTTPFetcher{}
+	pipeline.Fetcher = fetch.HTTPFetcher{Client: newHTTPClient()}
 	pipeline.Parser = parse.HTMLParser{}
 	pipeline.Extractor = extractor
 	pipeline.Writer = output.NewJSONLWriter(out)
@@ -106,6 +107,21 @@ func openOutput(path string) (io.Writer, func(), error) {
 	}
 
 	return file, func() { _ = file.Close() }, nil
+}
+
+func newHTTPClient() *http.Client {
+	return &http.Client{
+		Timeout: 30 * time.Second,
+		Transport: &http.Transport{
+			Proxy:                 http.ProxyFromEnvironment,
+			MaxIdleConns:          100,
+			MaxIdleConnsPerHost:   32,
+			MaxConnsPerHost:       64,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		},
+	}
 }
 
 func configureLogger(verbose bool, debugScript bool) {

@@ -1,113 +1,61 @@
 # mini-crawler
 
-Small CLI for turning HTML pages into JSONL records.
+Small CLI for extracting JSON records from HTML pages.
+You can then index these records into search engines or databases.
 
 ## How it works
 
 The CLI discovers URLs from a sitemap and extracts information from each HTML page.
-Extraction logic is scriptable with `starlark`, a Python-like language.
-
-## Library usage
-
-You can use this program as a library.
-A crawl is five replaceable stages:
-
-```text
-Source -> Fetcher -> Parser -> Extractor -> Writer
-```
-
-- **Source** discovers references to process. A reference can be an HTTP URL, file path, object key, database ID, or any string your fetcher understands.
-- **Fetcher** loads raw bytes for one reference.
-- **Parser** turns raw bytes into a parsed document shape.
-- **Extractor** reads the parsed document and returns JSON-like records.
-- **Writer** receives records and persists them.
-
-The CLI runs one version of this pipeline:
-
-```text
-sitemap/single URL source -> HTTP fetcher -> HTML parser -> Starlark extractor -> JSONL writer
-```
-
-You can swap any stage.
-For example, local Markdown docs could use:
-
-```text
-filesystem source -> file fetcher -> Markdown parser -> custom extractor -> JSONL writer
-```
-
-The crawler core only coordinates discovery,
-worker fan-out,
-error policy,
-and record writing.
-It doesn't know about record shapes, HTML selectors, Markdown, or HTTP beyond the concrete stages you plug in.
+You can control what gets extracted by scripts.
 
 ## Requirements
 
-- Go `1.26+`
-
-## Build
-
-```sh
-mise build
-```
+**Only crawl sites you own.**
+Your site must have a sitemap for URL discovery.
+This crawler does not crawl links found in documents.
 
 ## Usage
 
-```sh
-# Crawl URLs from a sitemap
-docs-crawler crawl sitemap --script <script.star> [flags] <sitemap-url>
-# Crawl a single page
-docs-crawler crawl single --script <script.star> [flags] <page-url>
-```
+Run `mini-crawler --help` to see the available commands and options.
 
-### Flags
-
-Common `crawl` flags:
-
-- `--script`, `-s`: Starlark script with the extraction logic (required)
-- `--verbose`: show crawl logs on stderr
-- `--output`, `-o`: write JSONL to file instead of stdout
-
-`sitemap` flags:
-
-- `--workers`, `-w`: number of concurrent page workers. Default: `1`
-- `--fail-on-error`: stop run if one URL fails
-
-## Examples
-
-Crawl one page with Algolia example script:
+When developing your extraction logic,
+it can be useful to extract only a single URL:
 
 ```sh
-go run . crawl single \
-  -s examples/algolia.star \
-  https://algolia.com/doc/ui-libraries/autocomplete/introduction/what-is-autocomplete
+mini-crawler crawl single URL --script EXTRACTION.STAR
 ```
 
-Crawl sitemap with 8 workers and save output:
+By default, extracted records are printed to standard output.
+To write them into a file, use the `--output` option.
+
+To crawl your site, run:
 
 ```sh
-go run . crawl sitemap \
-  -s examples/algolia.star \
-  -w 8 \
-  -o records.jsonl \
-  https://algolia.com/sitemap.xml
+mini-crawler crawl sitemap SITEMAP_URL --script EXTRACTION.STAR --workers 8 --output records.jsonl
 ```
+
+This processes your sitemap in parallel.
+If you plan to use this program regularly,
+run tests to see how much you actually benefit from parallelism.
 
 ## Extraction scripts
+
+Extraction is controlled by scripts written in [Starlark](https://github.com/google/starlark-go),
+a Python-like scripting language.
 
 Scripts register extractor functions with the `extract(pattern, fn)` DSL:
 
 ```python
-def extract_guides(pattern, doc, ctx):
+def handle_guides(pattern, doc, ctx):
     return [{"url": ctx["url"], "title": text(doc.select_first("h1"))}]
 
 
-extract("^/doc/guides/", extract_guides)
+extract("^/doc/guides/", handle_guides)
 ```
 
-Extractor rules:
+Rules for extractor functions:
 
-- Extractor functions must accept exactly three arguments
+- Extractor functions must accept exactly three arguments: `pattern`, `doc`, `ctx`
 - `pattern` must be a valid regular expression matched against the URL path
 - Registration order matters; first matching extractor wins
 - Extractor functions must return a list of JSON-like records
@@ -175,36 +123,25 @@ docs-crawler crawl single --script examples/minimal.star --debug-script https://
 
 ## Output
 
-Output is newline-delimited JSON (`.jsonl`). Each line is one script-produced record returned by the matching extractor.
+Output is newline-delimited JSON (`.jsonl`).
 
-The crawler does not enforce a record schema beyond JSON-like values. Your script owns fields such as `url`, `objectID`, `recordType`, `hierarchy`, and `content`.
 
-Example line from `examples/algolia.star`:
+## Library usage
 
-```json
-{
-  "url": "https://algolia.com/doc/rest-api/search#query",
-  "urlWithoutAnchor": "https://algolia.com/doc/rest-api/search",
-  "breadcrumbSegments": ["REST API"],
-  "breadcrumbHierarchy": { "lvl0": "REST API" },
-  "contentType": "api",
-  "recordType": "field",
-  "content": "string. required. Search query text.",
-  "hierarchy": { "lvl1": "Search", "lvl3": "query" },
-  "position": 12,
-  "objectID": "doc-rest-api-search-query"
-}
+You can use this program as a library.
+A crawl has five replaceable stages:
+
+1. **Source** discovers references to process. A reference can be an HTTP URL, file path, object key, database ID, or any string your fetcher understands.
+1. **Fetcher** loads raw bytes for one reference.
+1. **Parser** turns raw bytes into a parsed document shape.
+1. **Extractor** reads the parsed document and returns JSON-like records.
+1. **Writer** receives records and persists them.
+
+You can swap any stage, for example, for crawling local Markdown files:
+
+```text
+filesystem source -> file fetcher -> Markdown parser -> custom extractor -> JSONL writer
 ```
-
-## Error policy
-
-Single URL runs fail if the page cannot be crawled.
-
-Sitemap runs are best-effort by default: failed pages are logged and crawl continues.
-Use `--fail-on-error` to stop on first page failure.
-
-Verbose logs go to stderr.
-JSONL records go to stdout unless `--output` is set.
 
 ## Library API
 
@@ -328,11 +265,21 @@ Use built-in packages when they fit:
 - `pkg/extract`: `StarlarkExtractor`
 - `pkg/output`: `JSONLWriter`
 
-## Tests
+## Development
+
+### Build
+
+```sh
+mise build
+```
+
+### Tests
 
 ```sh
 mise test
 ```
+
+### Lint and format
 
 Build the binary, lint, format, and test:
 

@@ -10,6 +10,10 @@ import (
 
 func TestHTTPFetcherFetch(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.UserAgent() != "mini-crawler/0.1" {
+			t.Fatalf("User-Agent = %q", r.UserAgent())
+		}
+
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusAccepted)
 		_, _ = w.Write([]byte("<html><body>ok</body></html>"))

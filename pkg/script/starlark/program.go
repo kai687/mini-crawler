@@ -13,6 +13,7 @@ import (
 // extractorRegistration stores one extract(pattern, fn) call from a script.
 type extractorRegistration struct {
 	pattern string
+	regex   *regexp.Regexp
 	fn      starlarkgo.Callable
 }
 
@@ -26,12 +27,7 @@ type Program struct {
 // Extract calls the first registered extractor whose pattern matches ctx.URL path.
 func (p *Program) Extract(doc script.Document, ctx script.Context) ([]map[string]any, error) {
 	for _, extractor := range p.extractors {
-		matched, err := regexp.MatchString(extractor.pattern, pathFromURL(ctx.URL))
-		if err != nil {
-			return nil, p.extractorError(extractor, ctx, err)
-		}
-
-		if !matched {
+		if !extractor.regex.MatchString(pathFromURL(ctx.URL)) {
 			continue
 		}
 
@@ -139,8 +135,11 @@ func (p *Program) validateExports() error {
 		return fmt.Errorf("starlark script registered no extractors")
 	}
 
-	for _, extractor := range p.extractors {
-		if _, err := regexp.Compile(extractor.pattern); err != nil {
+	for i := range p.extractors {
+		extractor := &p.extractors[i]
+
+		regex, err := regexp.Compile(extractor.pattern)
+		if err != nil {
 			return fmt.Errorf(
 				"extractor %s pattern %q: %w",
 				extractor.fn.Name(),
@@ -148,6 +147,7 @@ func (p *Program) validateExports() error {
 				err,
 			)
 		}
+		extractor.regex = regex
 
 		if err := validateExtractorFunction(extractor.fn); err != nil {
 			return fmt.Errorf("extractor %s: %w", extractor.fn.Name(), err)

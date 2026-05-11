@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/algolia/mini-crawler/pkg/httpheaders"
 	"github.com/antchfx/xmlquery"
 )
 
@@ -30,6 +31,7 @@ func (s Sitemap) URLs(ctx context.Context) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("build sitemap request: %w", err)
 	}
+	req.Header.Set("User-Agent", httpheaders.UserAgent)
 
 	resp, err := s.Client.Do(req)
 	if err != nil {
