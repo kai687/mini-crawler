@@ -24,6 +24,7 @@ func newRootCommand(ctx context.Context) *cobra.Command {
 
 	cmd.AddCommand(crawl.NewCommand(ctx))
 	cmd.AddCommand(scriptcmd.NewCommand(ctx))
+	cmd.AddCommand(newVersionCommand())
 
 	return cmd
 }
