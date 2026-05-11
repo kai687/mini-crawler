@@ -9,27 +9,26 @@ import (
 
 // JSONLWriter writes records as newline-delimited JSON objects.
 type JSONLWriter struct {
-	writer *bufio.Writer
+	writer  *bufio.Writer
+	encoder *json.Encoder
 }
+
+const defaultBufferSize = 1 << 20
 
 // NewJSONLWriter wraps an io.Writer with buffered JSONL output.
 func NewJSONLWriter(w io.Writer) *JSONLWriter {
-	return &JSONLWriter{writer: bufio.NewWriter(w)}
+	writer := bufio.NewWriterSize(w, defaultBufferSize)
+
+	return &JSONLWriter{
+		writer:  writer,
+		encoder: json.NewEncoder(writer),
+	}
 }
 
 // Write serializes one record as a single JSONL line.
 func (w *JSONLWriter) Write(record any) error {
-	data, err := json.Marshal(record)
-	if err != nil {
-		return fmt.Errorf("marshal record: %w", err)
-	}
-
-	if _, err := w.writer.Write(data); err != nil {
+	if err := w.encoder.Encode(record); err != nil {
 		return fmt.Errorf("write record: %w", err)
-	}
-
-	if err := w.writer.WriteByte('\n'); err != nil {
-		return fmt.Errorf("write newline: %w", err)
 	}
 
 	return nil

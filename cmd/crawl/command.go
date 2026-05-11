@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"runtime/pprof"
 	"time"
 
 	"github.com/algolia/mini-crawler/pkg/crawler"
@@ -24,6 +25,7 @@ type config struct {
 	Script          string
 	RequestRate     float64
 	MetricsInterval time.Duration
+	CPUProfile      string
 }
 
 func NewCommand(ctx context.Context) *cobra.Command {
@@ -49,6 +51,7 @@ func NewCommand(ctx context.Context) *cobra.Command {
 		10*time.Second,
 		"log crawl metrics at this interval when verbose (0 disables periodic logs)",
 	)
+	cmd.PersistentFlags().StringVar(&cfg.CPUProfile, "cpu-profile", "", "write CPU profile to file")
 
 	cmd.AddCommand(newSitemapCommand(ctx, &cfg))
 	cmd.AddCommand(newSingleCommand(ctx, &cfg))
@@ -60,6 +63,12 @@ func runCrawl(ctx context.Context, cfg config, pipeline crawler.Pipeline) error 
 	if cfg.Script == "" {
 		return fmt.Errorf("invalid config: script flag required")
 	}
+
+	stopProfile, err := startCPUProfile(cfg.CPUProfile)
+	if err != nil {
+		return err
+	}
+	defer stopProfile()
 
 	configureLogger(cfg.Verbose, cfg.DebugScript)
 
@@ -94,6 +103,29 @@ func runCrawl(ctx context.Context, cfg config, pipeline crawler.Pipeline) error 
 	}
 
 	return nil
+}
+
+func startCPUProfile(path string) (func(), error) {
+	if path == "" {
+		return func() {}, nil
+	}
+
+	file, err := os.Create(path)
+	if err != nil {
+		return nil, fmt.Errorf("create cpu profile: %w", err)
+	}
+
+	if err := pprof.StartCPUProfile(file); err != nil {
+		_ = file.Close()
+
+		return nil, fmt.Errorf("start cpu profile: %w", err)
+	}
+
+	return func() {
+		pprof.StopCPUProfile()
+
+		_ = file.Close()
+	}, nil
 }
 
 func openOutput(path string) (io.Writer, func(), error) {

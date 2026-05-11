@@ -74,7 +74,7 @@ func (v documentValue) selectFirst(
 		return nil, err
 	}
 
-	return firstNodeOrNone(v.doc.GoqueryDocument().Find(css)), nil
+	return firstNodeOrNone(v.doc.GoqueryDocument().FindMatcher(goquery.Single(css))), nil
 }
 
 // nodeValue is the Starlark-facing wrapper around one goquery selection.
@@ -154,7 +154,7 @@ func (v nodeValue) selectFirst(
 		return nil, err
 	}
 
-	return firstNodeOrNone(v.selection.Find(css)), nil
+	return firstNodeOrNone(v.selection.FindMatcher(goquery.Single(css))), nil
 }
 
 // nodesFromSelection converts a goquery selection into a Starlark node list.
@@ -329,14 +329,14 @@ func selectFirstFromValue(
 ) (*goquery.Selection, error) {
 	switch value := value.(type) {
 	case documentValue:
-		first := value.doc.GoqueryDocument().Find(css).First()
+		first := value.doc.GoqueryDocument().FindMatcher(goquery.Single(css))
 		if first.Length() == 0 {
 			return nil, nil
 		}
 
 		return first, nil
 	case nodeValue:
-		first := value.selection.Find(css).First()
+		first := value.selection.FindMatcher(goquery.Single(css))
 		if first.Length() == 0 {
 			return nil, nil
 		}

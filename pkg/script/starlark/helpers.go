@@ -2,13 +2,32 @@ package starlark
 
 import (
 	"crypto/sha1"
+	"encoding/hex"
 	"fmt"
 	"net/url"
 	"regexp"
 	"strings"
+	"sync"
 
 	starlarkgo "go.starlark.net/starlark"
 )
+
+var regexCache sync.Map // map[string]*regexp.Regexp
+
+func cachedRegexp(pattern string) (*regexp.Regexp, error) {
+	if cached, ok := regexCache.Load(pattern); ok {
+		return cached.(*regexp.Regexp), nil
+	}
+
+	expression, err := regexp.Compile(pattern)
+	if err != nil {
+		return nil, err
+	}
+
+	cached, _ := regexCache.LoadOrStore(pattern, expression)
+
+	return cached.(*regexp.Regexp), nil
+}
 
 // trimBuiltin exposes strings.TrimSpace to Starlark scripts.
 func trimBuiltin(
@@ -136,7 +155,9 @@ func sha1Builtin(
 		return nil, err
 	}
 
-	return starlarkgo.String(fmt.Sprintf("%x", sha1.Sum([]byte(value)))), nil
+	sum := sha1.Sum([]byte(value))
+
+	return starlarkgo.String(hex.EncodeToString(sum[:])), nil
 }
 
 // regexMatchBuiltin reports whether a regular expression matches a string.
@@ -163,12 +184,12 @@ func regexMatchBuiltin(
 		return nil, err
 	}
 
-	matched, err := regexp.MatchString(pattern, value)
+	expression, err := cachedRegexp(pattern)
 	if err != nil {
 		return nil, err
 	}
 
-	return starlarkgo.Bool(matched), nil
+	return starlarkgo.Bool(expression.MatchString(value)), nil
 }
 
 // regexReplaceBuiltin applies a regular-expression replacement.
@@ -198,7 +219,7 @@ func regexReplaceBuiltin(
 		return nil, err
 	}
 
-	expression, err := regexp.Compile(pattern)
+	expression, err := cachedRegexp(pattern)
 	if err != nil {
 		return nil, err
 	}

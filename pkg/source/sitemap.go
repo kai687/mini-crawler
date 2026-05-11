@@ -2,12 +2,14 @@ package source
 
 import (
 	"context"
+	"encoding/xml"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/algolia/mini-crawler/pkg/httpheaders"
-	"github.com/antchfx/xmlquery"
 )
 
 // Sitemap loads page URLs from a sitemap XML document.
@@ -31,6 +33,7 @@ func (s Sitemap) URLs(ctx context.Context) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("build sitemap request: %w", err)
 	}
+
 	req.Header.Set("User-Agent", httpheaders.UserAgent)
 
 	resp, err := s.Client.Do(req)
@@ -39,21 +42,44 @@ func (s Sitemap) URLs(ctx context.Context) ([]string, error) {
 	}
 	defer resp.Body.Close()
 
-	doc, err := xmlquery.Parse(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("parse sitemap xml: %w", err)
-	}
-
 	base, err := url.Parse(s.SitemapURL)
 	if err != nil {
 		return nil, fmt.Errorf("parse sitemap url: %w", err)
 	}
 
-	nodes := xmlquery.Find(doc, "//loc")
+	urls, err := parseSitemapURLs(resp.Body, base)
+	if err != nil {
+		return nil, fmt.Errorf("parse sitemap xml: %w", err)
+	}
 
-	urls := make([]string, 0, len(nodes))
-	for _, node := range nodes {
-		raw := node.InnerText()
+	return urls, nil
+}
+
+func parseSitemapURLs(r io.Reader, base *url.URL) ([]string, error) {
+	decoder := xml.NewDecoder(r)
+	urls := []string{}
+
+	for {
+		token, err := decoder.Token()
+		if err == io.EOF {
+			return urls, nil
+		}
+
+		if err != nil {
+			return nil, err
+		}
+
+		start, ok := token.(xml.StartElement)
+		if !ok || start.Name.Local != "loc" {
+			continue
+		}
+
+		var raw string
+		if err := decoder.DecodeElement(&raw, &start); err != nil {
+			return nil, err
+		}
+
+		raw = strings.TrimSpace(raw)
 
 		resolved, err := resolveURL(base, raw)
 		if err != nil {
@@ -62,8 +88,6 @@ func (s Sitemap) URLs(ctx context.Context) ([]string, error) {
 
 		urls = append(urls, resolved)
 	}
-
-	return urls, nil
 }
 
 // resolveURL resolves one sitemap <loc> value against the sitemap URL.

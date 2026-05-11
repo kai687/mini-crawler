@@ -26,8 +26,10 @@ type Program struct {
 
 // Extract calls the first registered extractor whose pattern matches ctx.URL path.
 func (p *Program) Extract(doc script.Document, ctx script.Context) ([]map[string]any, error) {
+	path := pathFromURL(ctx.URL)
+
 	for _, extractor := range p.extractors {
-		if !extractor.regex.MatchString(pathFromURL(ctx.URL)) {
+		if !extractor.regex.MatchString(path) {
 			continue
 		}
 
@@ -147,6 +149,7 @@ func (p *Program) validateExports() error {
 				err,
 			)
 		}
+
 		extractor.regex = regex
 
 		if err := validateExtractorFunction(extractor.fn); err != nil {

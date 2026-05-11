@@ -8,6 +8,36 @@ You can then index these records into search engines or databases.
 The CLI discovers URLs from a sitemap and extracts information from each HTML page.
 You can control what gets extracted by scripts.
 
+## Why this exists
+
+I wanted a simple crawler that I can run on my machine for indexing documentation sites
+that I'm working on.
+
+Features and omissions:
+
+- **Configuration as code.**
+  I didn't want my configuration to live in some dashboard.
+  Having the crawler configuration committed to Git makes it easy to troubleshoot your extraction logic.
+
+- **Do one thing.**
+  Grab URLs from a sitemap and expose helpers to write your own extraction logic.
+  That's it. If you need more, there are excellent frameworks and commercial crawler solutions out there.
+  The crawler extracts and some other tool puts your records wherever you want them.
+
+  For example, I use this pipeline to index a website into Algolia/DocSearch:
+
+  ```sh
+  mini-crawler crawl sitemap SITEMAP_URL -w 8 | algolia objects import INDEX_NAME -F -
+  ```
+
+- **Run where I want.**
+  Just like local previews for websites,
+  I wanted to get fast feedback when configuring the extraction logic.
+  In production, I'm already using CI environments for many things, why not the crawler as well?
+  No need to trigger a workflow that then runs in some other cloud.
+  By the time a crawl is scheduled, `mini-crawler` will already been done in your CI.
+  And if you don't want a CI at all, you can just run it locally.
+
 ## Requirements
 
 **Only crawl sites you own.**

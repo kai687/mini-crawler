@@ -29,6 +29,7 @@ func (f HTTPFetcher) Fetch(ctx context.Context, pageURL string) (model.Page, err
 	if err != nil {
 		return model.Page{}, fmt.Errorf("build request: %w", err)
 	}
+
 	req.Header.Set("User-Agent", httpheaders.UserAgent)
 
 	resp, err := client.Do(req)
