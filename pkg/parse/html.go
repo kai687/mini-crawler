@@ -36,49 +36,41 @@ func (p HTMLParser) Parse(page model.Page) (model.ParsedPage, error) {
 func stripRawTextElements(body []byte) []byte {
 	out := []byte(nil)
 	start := 0
+
 	for i := 0; i < len(body); {
 		next := bytes.IndexByte(body[i:], '<')
 		if next < 0 {
 			break
 		}
+
 		i += next
 
 		tag, ok := rawTextTagAt(body, i)
 		if !ok {
 			i++
+
 			continue
 		}
 
 		openEnd := bytes.IndexByte(body[i:], '>')
 		if openEnd < 0 {
-			if out == nil {
-				return body[:i]
-			}
-			out = append(out, body[start:i]...)
-			return out
+			return appendUntil(body, out, start, i)
 		}
 
 		closeStart := findClosingTag(body, i+openEnd+1, tag)
 		if closeStart < 0 {
-			if out == nil {
-				return body[:i]
-			}
-			out = append(out, body[start:i]...)
-			return out
+			return appendUntil(body, out, start, i)
 		}
 
 		closeEnd := bytes.IndexByte(body[closeStart:], '>')
 		if closeEnd < 0 {
-			if out == nil {
-				return body[:i]
-			}
-			out = append(out, body[start:i]...)
-			return out
+			return appendUntil(body, out, start, i)
 		}
 
 		if out == nil {
 			out = make([]byte, 0, len(body)-(closeStart+closeEnd+1-i))
 		}
+
 		out = append(out, body[start:i]...)
 		i = closeStart + closeEnd + 1
 		start = i
@@ -89,7 +81,16 @@ func stripRawTextElements(body []byte) []byte {
 	}
 
 	out = append(out, body[start:]...)
+
 	return out
+}
+
+func appendUntil(body, out []byte, start, end int) []byte {
+	if out == nil {
+		return body[:end]
+	}
+
+	return append(out, body[start:end]...)
 }
 
 func rawTextTagAt(body []byte, i int) (string, bool) {
@@ -114,11 +115,13 @@ func rawTextTagAt(body []byte, i int) (string, bool) {
 
 func findClosingTag(body []byte, start int, tag string) int {
 	closing := []byte("</" + tag)
+
 	for i := start; i < len(body); {
 		next := bytes.IndexByte(body[i:], '<')
 		if next < 0 {
 			return -1
 		}
+
 		i += next
 
 		if hasASCIIPrefixFold(body[i:], closing) && isTagBoundary(body, i+len(closing)) {
