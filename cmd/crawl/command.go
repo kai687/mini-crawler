@@ -55,6 +55,7 @@ func NewCommand(ctx context.Context) *cobra.Command {
 	)
 
 	cmd.AddCommand(newSitemapCommand(ctx, &cfg))
+	cmd.AddCommand(newLLMSCommand(ctx, &cfg))
 	cmd.AddCommand(newSingleCommand(ctx, &cfg))
 
 	return cmd
@@ -84,9 +85,12 @@ func runCrawl(ctx context.Context, cfg config, pipeline crawler.Pipeline) error 
 		return err
 	}
 
-	pipeline.Fetcher = fetch.HTTPFetcher{Client: newHTTPClient()}
+	pipeline.Fetcher = fetch.HTTPFetcher{Client: newHTTPClient(30 * time.Second)}
 
-	pipeline.Parser = parse.HTMLParser{}
+	if pipeline.Parser == nil {
+		pipeline.Parser = parse.HTMLParser{}
+	}
+
 	if !cfg.IgnoreNoindex {
 		pipeline.ParsedPageFilter = crawler.RobotsNoindexFilter{}
 	}
@@ -158,9 +162,9 @@ func openOutput(path string) (io.Writer, func(), error) {
 	return file, func() { _ = file.Close() }, nil
 }
 
-func newHTTPClient() *http.Client {
+func newHTTPClient(timeout time.Duration) *http.Client {
 	return &http.Client{
-		Timeout: 30 * time.Second,
+		Timeout: timeout,
 		Transport: &http.Transport{
 			Proxy:                 http.ProxyFromEnvironment,
 			MaxIdleConns:          100,

@@ -43,9 +43,14 @@ func (f HTTPFetcher) Fetch(ctx context.Context, pageURL string) (model.Page, err
 		return model.Page{}, fmt.Errorf("read body: %w", err)
 	}
 
+	finalURL := pageURL
+	if resp.Request != nil && resp.Request.URL != nil {
+		finalURL = resp.Request.URL.String()
+	}
+
 	return model.Page{
 		Ref:         pageURL,
-		URL:         pageURL,
+		URL:         finalURL,
 		StatusCode:  resp.StatusCode,
 		ContentType: resp.Header.Get("Content-Type"),
 		Body:        body,

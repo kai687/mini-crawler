@@ -33,13 +33,35 @@ func (v documentValue) Hash() (uint32, error) {
 }
 
 func (v documentValue) AttrNames() []string {
-	return []string{"select", "select_first", "url"}
+	return []string{
+		"description",
+		"h1",
+		"h2",
+		"h3",
+		"h4",
+		"h5",
+		"h6",
+		"headings",
+		"kind",
+		"select",
+		"select_first",
+		"title",
+		"url",
+	}
 }
 
 func (v documentValue) Attr(name string) (starlarkgo.Value, error) {
 	switch name {
 	case "url":
 		return starlarkgo.String(v.doc.URL()), nil
+	case "kind":
+		return starlarkgo.String(v.doc.Kind()), nil
+	case "title":
+		return starlarkgo.String(v.doc.MetadataString("title")), nil
+	case "description":
+		return starlarkgo.String(v.doc.MetadataString("description")), nil
+	case "h1", "h2", "h3", "h4", "h5", "h6", "headings":
+		return fromGoValue(v.doc.MetadataValue(name)), nil
 	case "select":
 		return starlarkgo.NewBuiltin("document.select", v.selectNodes), nil
 	case "select_first":
@@ -60,7 +82,12 @@ func (v documentValue) selectNodes(
 		return nil, err
 	}
 
-	return nodesFromSelection(v.doc.GoqueryDocument().Find(css)), nil
+	doc := v.doc.GoqueryDocument()
+	if doc == nil {
+		return starlarkgo.NewList(nil), nil
+	}
+
+	return nodesFromSelection(doc.Find(css)), nil
 }
 
 func (v documentValue) selectFirst(
@@ -74,7 +101,12 @@ func (v documentValue) selectFirst(
 		return nil, err
 	}
 
-	return firstNodeOrNone(v.doc.GoqueryDocument().FindMatcher(goquery.Single(css))), nil
+	doc := v.doc.GoqueryDocument()
+	if doc == nil {
+		return starlarkgo.None, nil
+	}
+
+	return firstNodeOrNone(doc.FindMatcher(goquery.Single(css))), nil
 }
 
 // nodeValue is the Starlark-facing wrapper around one goquery selection.
@@ -187,13 +219,22 @@ func predeclared() starlarkgo.StringDict {
 		"first_attr":         starlarkgo.NewBuiltin("first_attr", firstAttrBuiltin),
 		"first_text":         starlarkgo.NewBuiltin("first_text", firstTextBuiltin),
 		"has_parent":         starlarkgo.NewBuiltin("has_parent", hasParentBuiltin),
+		"h1":                 starlarkgo.NewBuiltin("h1", h1Builtin),
+		"h2":                 starlarkgo.NewBuiltin("h2", h2Builtin),
+		"h3":                 starlarkgo.NewBuiltin("h3", h3Builtin),
+		"h4":                 starlarkgo.NewBuiltin("h4", h4Builtin),
+		"h5":                 starlarkgo.NewBuiltin("h5", h5Builtin),
+		"h6":                 starlarkgo.NewBuiltin("h6", h6Builtin),
+		"headings":           starlarkgo.NewBuiltin("headings", headingsBuiltin),
 		"node_name":          starlarkgo.NewBuiltin("node_name", nodeNameBuiltin),
 		"path":               starlarkgo.NewBuiltin("path", pathBuiltin),
 		"regex_match":        starlarkgo.NewBuiltin("regex_match", regexMatchBuiltin),
 		"regex_replace":      starlarkgo.NewBuiltin("regex_replace", regexReplaceBuiltin),
 		"safe_text":          starlarkgo.NewBuiltin("safe_text", safeTextBuiltin),
 		"sha1":               starlarkgo.NewBuiltin("sha1", sha1Builtin),
+		"description":        starlarkgo.NewBuiltin("description", descriptionBuiltin),
 		"text":               starlarkgo.NewBuiltin("text", textBuiltin),
+		"title":              starlarkgo.NewBuiltin("title", titleBuiltin),
 		"trim":               starlarkgo.NewBuiltin("trim", trimBuiltin),
 		"url_join":           starlarkgo.NewBuiltin("url_join", urlJoinBuiltin),
 		"url_without_anchor": starlarkgo.NewBuiltin("url_without_anchor", urlWithoutAnchorBuiltin),

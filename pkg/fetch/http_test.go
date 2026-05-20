@@ -42,6 +42,34 @@ func TestHTTPFetcherFetch(t *testing.T) {
 	}
 }
 
+func TestHTTPFetcherUsesFinalRedirectURL(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/old":
+			http.Redirect(w, r, "/new", http.StatusFound)
+		case "/new":
+			_, _ = w.Write([]byte("ok"))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	page, err := HTTPFetcher{Client: server.Client()}.Fetch(context.Background(), server.URL+"/old")
+	if err != nil {
+		t.Fatalf("Fetch() err = %v", err)
+	}
+
+	want := server.URL + "/new"
+	if page.URL != want {
+		t.Fatalf("URL = %q, want %q", page.URL, want)
+	}
+
+	if page.Ref != server.URL+"/old" {
+		t.Fatalf("Ref = %q, want original URL", page.Ref)
+	}
+}
+
 func TestHTTPFetcherFetchError(t *testing.T) {
 	_, err := HTTPFetcher{Client: &http.Client{}}.Fetch(context.Background(), "://bad-url")
 	if err == nil {
