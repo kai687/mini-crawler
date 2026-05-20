@@ -2,6 +2,7 @@ package crawl
 
 import (
 	"context"
+	"net/http"
 	"time"
 
 	"github.com/kai687/mini-crawler/pkg/crawler"
@@ -24,7 +25,7 @@ func newSitemapCommand(ctx context.Context, cfg *config) *cobra.Command {
 			return runCrawl(ctx, *cfg, crawler.Pipeline{
 				Source: source.Sitemap{
 					SitemapURL: args[0],
-					Client:     newHTTPClient(15 * time.Second),
+					Client:     &http.Client{Timeout: 15 * time.Second},
 				},
 				Workers:     sitemapCfg.Workers,
 				FailOnError: sitemapCfg.FailOnError,
