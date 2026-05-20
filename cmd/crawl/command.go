@@ -55,6 +55,7 @@ func NewCommand(ctx context.Context) *cobra.Command {
 	)
 
 	cmd.AddCommand(newSitemapCommand(ctx, &cfg))
+	cmd.AddCommand(newLLMSCommand(ctx, &cfg))
 	cmd.AddCommand(newSingleCommand(ctx, &cfg))
 
 	return cmd
@@ -86,7 +87,10 @@ func runCrawl(ctx context.Context, cfg config, pipeline crawler.Pipeline) error 
 
 	pipeline.Fetcher = fetch.HTTPFetcher{Client: newHTTPClient()}
 
-	pipeline.Parser = parse.HTMLParser{}
+	if pipeline.Parser == nil {
+		pipeline.Parser = parse.HTMLParser{}
+	}
+
 	if !cfg.IgnoreNoindex {
 		pipeline.ParsedPageFilter = crawler.RobotsNoindexFilter{}
 	}
