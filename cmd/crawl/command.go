@@ -85,7 +85,7 @@ func runCrawl(ctx context.Context, cfg config, pipeline crawler.Pipeline) error 
 		return err
 	}
 
-	pipeline.Fetcher = fetch.HTTPFetcher{Client: newHTTPClient()}
+	pipeline.Fetcher = fetch.HTTPFetcher{Client: newHTTPClient(30 * time.Second)}
 
 	if pipeline.Parser == nil {
 		pipeline.Parser = parse.HTMLParser{}
@@ -162,9 +162,9 @@ func openOutput(path string) (io.Writer, func(), error) {
 	return file, func() { _ = file.Close() }, nil
 }
 
-func newHTTPClient() *http.Client {
+func newHTTPClient(timeout time.Duration) *http.Client {
 	return &http.Client{
-		Timeout: 30 * time.Second,
+		Timeout: timeout,
 		Transport: &http.Transport{
 			Proxy:                 http.ProxyFromEnvironment,
 			MaxIdleConns:          100,
