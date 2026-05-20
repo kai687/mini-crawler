@@ -31,10 +31,6 @@ func (w *JSONLWriter) Write(record any) error {
 		return fmt.Errorf("write record: %w", err)
 	}
 
-	if err := w.writer.Flush(); err != nil {
-		return fmt.Errorf("flush record: %w", err)
-	}
-
 	return nil
 }
 
